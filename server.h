@@ -1,7 +1,7 @@
 #ifndef SERVER
 #define SERVER
 
-#include <cstring> //for memset
+#include <cstring> //for memset and strtok
 #include <cstdlib> //for exit
 
 #include <stdio.h> //perror and printf
@@ -14,6 +14,8 @@
 #include <sys/mman.h> //for mmap
 
 #include <liburing.h> //for liburing
+
+#include <vector> //for vectors
 
 #include <iostream> //for string and iostream stuff
 
@@ -43,14 +45,14 @@ class server{
     void (*write_callback)(int client_fd, server *web_server) = nullptr;
 
     int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
+    int setup_listener(int port); //sets up the listener socket
     void serverLoop();
   public:
     //accept callbacks for ACCEPT, READ and WRITE
     server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
 
-    int setup_listener(int port); //sets up the listener socket
     int add_read_req(int client_fd); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, int iovec_count, iovec iovecs[]); //adds a write request using the provided request structure
+    int add_write_req(int client_fd, void *data, int size); //adds a write request using the provided request structure
 };
 
 #endif

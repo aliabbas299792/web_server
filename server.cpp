@@ -76,6 +76,7 @@ int server::add_read_req(int client_fd){
   
   req->iovecs[0].iov_base = std::malloc(READ_SIZE); //malloc enough space for the data to be read
   req->iovecs[0].iov_len = READ_SIZE;
+  req->iovec_count = 1;
   req->event = event_type::READ;
   req->client_socket = client_fd;
   std::memset(req->iovecs[0].iov_base, 0, sizeof(req->iovecs[0].iov_base));
@@ -87,14 +88,19 @@ int server::add_read_req(int client_fd){
   return 0;
 }
 
-int server::add_write_req(int client_fd, int iovec_count, iovec iovecs[]) {
+int server::add_write_req(int client_fd, void *data, int size) {
+  int iovec_count = std::div(size, READ_SIZE).quot + 1;
+
   request *req = (request*)std::malloc(sizeof(request) + sizeof(iovec) * iovec_count);
   req->client_socket = client_fd;
   req->iovec_count = iovec_count;
-  auto *iovecs_ptr = req->iovecs;
-  iovecs_ptr = iovecs;
-
   req->event = event_type::WRITE;
+
+  for(int i = 0; i < iovec_count; i++){ //data is split into iovecs
+    req->iovecs[i].iov_base = &((char*)data)[i*READ_SIZE];
+    req->iovecs[i].iov_len = size >= READ_SIZE ? READ_SIZE : size;
+    size -= READ_SIZE;
+  }
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_writev(sqe, req->client_socket, req->iovecs, req->iovec_count, 0); //do not write at an offset
@@ -115,8 +121,6 @@ void server::serverLoop(){
     char ret = io_uring_wait_cqe(&ring, &cqe);
     request *req = (request*)cqe->user_data;
 
-    std::cout << "something happen\n";
-
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     if(cqe->res < 0){
@@ -126,7 +130,7 @@ void server::serverLoop(){
     
     switch(req->event){
       case event_type::ACCEPT:
-        if(accept_callback != nullptr) accept_callback(req->client_socket, this);
+        if(accept_callback != nullptr) accept_callback(cqe->res, this);
         add_accept_req(listener_fd, &client_address, &client_address_length); //add another accept request
         add_read_req(cqe->res); //also need to read whatever request it sends immediately
         free(req); //cleanup from the malloc in add_accept_req
