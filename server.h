@@ -23,6 +23,7 @@
 #define READ_SIZE 8192 //how much one read request should read
 #define PORT 8000
 #define QUEUE_DEPTH 256 //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
+#define READ_BLOCK_SIZE 4096 //how much to read from a file at once
 
 enum class event_type{ ACCEPT, READ, WRITE };
 
@@ -30,7 +31,7 @@ struct request {
   event_type event;
   int iovec_count;
   int client_socket;
-  iovec iovecs[];
+  iovec *iovecs;
 };
 
 void fatal_error(std::string error_message);
@@ -52,7 +53,7 @@ class server{
     server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
 
     int add_read_req(int client_fd); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, void *data, int size); //adds a write request using the provided request structure
+    int add_write_req(int client_fd, iovec *iovecs, int iovec_count); //adds a write request using the provided request structure
 };
 
 #endif

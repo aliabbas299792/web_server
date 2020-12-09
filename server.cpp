@@ -88,19 +88,15 @@ int server::add_read_req(int client_fd){
   return 0;
 }
 
-int server::add_write_req(int client_fd, void *data, int size) {
-  int iovec_count = std::div(size, READ_SIZE).quot + 1;
-
+int server::add_write_req(int client_fd, iovec *iovecs, int iovec_count) {
   request *req = (request*)std::malloc(sizeof(request) + sizeof(iovec) * iovec_count);
   req->client_socket = client_fd;
   req->iovec_count = iovec_count;
   req->event = event_type::WRITE;
 
-  for(int i = 0; i < iovec_count; i++){ //data is split into iovecs
-    req->iovecs[i].iov_base = &((char*)data)[i*READ_SIZE];
-    req->iovecs[i].iov_len = size >= READ_SIZE ? READ_SIZE : size;
-    size -= READ_SIZE;
-  }
+  std::cout << iovec_count << "\n";
+  std::memcpy(req->iovecs, iovecs, iovec_count * sizeof(iovec));
+  std::cout << iovec_count << "aaaaaaa\n";
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_writev(sqe, req->client_socket, req->iovecs, req->iovec_count, 0); //do not write at an offset

@@ -1,25 +1,45 @@
 #include "server.h"
 
+#include <unistd.h> //read
+#include <sys/stat.h> //fstat
+#include <fcntl.h> //open
+#include <sys/types.h> //O_RDONLY
+
+typedef struct stat stat_struct;
+
 void sigint_handler(int sig_number){
   std::cout << " Shutting down...\n";
   exit(0);
 }
-const char *testpage = \
-        "HTTP/1.0 200 OK\r\n"
-        "Content-type: text/html\r\n"
-        "\r\n"
-        "<html>"
-        "<head>"
-        "<title>Ali's website</title>"
-        "</head>"
-        "<body>"
-        "<h1>Hello</h1>"
-        "<p>The test page works.</p>"
-        "</body>"
-        "</html>";
 
 void accept_callback(int client_fd, server *web_server){
   //std::cout << "accepted client with client_fd: " << client_fd << "\n";
+}
+
+int get_file_size(int file_fd){
+  stat_struct file_stat;
+
+  if(fstat(file_fd, &file_stat) < 0)
+    fatal_error("file stat");
+  
+  if(S_ISBLK(file_stat.st_mode)){
+    uint long long size_bytes;
+    if(ioctl(file_fd, BLKGETSIZE64, &size_bytes) != 0)
+      fatal_error("file stat ioctl");
+    
+    return size_bytes;
+  }else if(S_ISREG(file_stat.st_mode)){
+    return file_stat.st_size;
+  }
+
+  return -1;
+}
+
+void read_file(std::string filepath, char *buffer, int &length){
+  int file_fd = open(filepath.c_str(), O_RDONLY);
+  auto size = get_file_size(file_fd);
+  std::cout << filepath << "\n";
+
 }
 
 void read_callback(int client_fd, int iovec_count, iovec iovecs[], server *web_server){
@@ -32,18 +52,23 @@ void read_callback(int client_fd, int iovec_count, iovec iovecs[], server *web_s
       iovecs[i].iov_base = nullptr;
     }
   }
+  
+  if(!strcmp(strtok((char*)headers[0].c_str(), " "), "GET")){
+    char *path = strtok(nullptr, " ");
+    std::string processed_path = std::string(&path[1], strlen(path)-1);
+    processed_path = processed_path == "" ? "index.html" : processed_path;
 
-  char *data = nullptr;
-  if(strcmp(strtok((char*)headers[0].c_str(), " "), "GET")){
-    char *directory = strtok(nullptr, " ");
     char *http_version = strtok(nullptr, " ");
-  }
 
-  auto content_length = strlen(testpage);
-  auto write_data = malloc(content_length);
-  std::memcpy(write_data, testpage, content_length);
-  web_server->add_write_req(client_fd, write_data, content_length); //pass the data to the write function
-  close(client_fd);
+    char *data = nullptr;
+    int length = 0;
+    read_file(processed_path, data, length);
+    
+    auto write_data = malloc(length);
+    std::memcpy(write_data, data, length);
+    web_server->add_write_req(client_fd, write_data, length); //pass the data to the write function
+    close(client_fd); //for web requests you close the socket right after
+  }
 }
 
 void write_callback(int client_fd, server *web_server){
