@@ -35,11 +35,24 @@ int get_file_size(int file_fd){
   return -1;
 }
 
-void read_file(std::string filepath, char *buffer, int &length){
+void read_file_and_prep_iovecs(std::string filepath, iovec *&iovecs, int &iovec_count, int num_prepend_iovecs = 0){
   int file_fd = open(filepath.c_str(), O_RDONLY);
-  auto size = get_file_size(file_fd);
-  std::cout << filepath << "\n";
 
+  if(file_fd > 0){
+    auto size = get_file_size(file_fd);
+    iovec_count = size / READ_BLOCK_SIZE;
+    if(size % READ_BLOCK_SIZE) iovec_count++;
+    iovecs = (iovec*)std::malloc(sizeof(iovec) * (iovec_count + num_prepend_iovecs));
+    for(int i = num_prepend_iovecs; i < iovec_count + num_prepend_iovecs; i++){
+      int size_this_time = size - READ_BLOCK_SIZE > 0 ? READ_BLOCK_SIZE : size;
+      iovecs[i].iov_base = std::malloc(size_this_time);
+      iovecs[i].iov_len = size_this_time;
+      size -= READ_BLOCK_SIZE;
+    }
+    readv(file_fd, &iovecs[num_prepend_iovecs], iovec_count);
+  }else{
+    iovec_count = -1;
+  }
 }
 
 void read_callback(int client_fd, int iovec_count, iovec iovecs[], server *web_server){
@@ -60,13 +73,26 @@ void read_callback(int client_fd, int iovec_count, iovec iovecs[], server *web_s
 
     char *http_version = strtok(nullptr, " ");
 
-    char *data = nullptr;
-    int length = 0;
-    read_file(processed_path, data, length);
-    
-    auto write_data = malloc(length);
-    std::memcpy(write_data, data, length);
-    web_server->add_write_req(client_fd, write_data, length); //pass the data to the write function
+    int prepend_iovecs = 1; //how many iovecs to prepend
+    iovec *iovecs_write = nullptr;
+    int iovec_count_write = 0;
+    read_file_and_prep_iovecs(processed_path, iovecs_write, iovec_count_write, prepend_iovecs);
+
+    if(iovec_count_write > 0){
+      //the header iovec to prepend, and only prepend if the iovecs have been allocated
+      char header[] = "HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n";
+      iovecs_write[0].iov_base = std::malloc(strlen(header));
+      iovecs_write[0].iov_len = strlen(header);
+      std::memcpy(iovecs_write[0].iov_base, header, strlen(header));
+
+      /*for(int i = 0; i < iovec_count_write + prepend_iovecs; i++){
+        for(int j = 0; j < iovecs_write[i].iov_len; j++){
+          fputc(((char*)(iovecs_write[i].iov_base))[j], stdout);
+        }
+      }*/
+
+      web_server->add_write_req(client_fd, iovecs_write, iovec_count_write + prepend_iovecs); //pass the data to the write function
+    }
     close(client_fd); //for web requests you close the socket right after
   }
 }

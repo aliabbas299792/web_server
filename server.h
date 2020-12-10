@@ -31,7 +31,7 @@ struct request {
   event_type event;
   int iovec_count;
   int client_socket;
-  iovec *iovecs;
+  iovec iovecs[];
 };
 
 void fatal_error(std::string error_message);
@@ -53,7 +53,7 @@ class server{
     server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
 
     int add_read_req(int client_fd); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, iovec *iovecs, int iovec_count); //adds a write request using the provided request structure
+    int add_write_req(int client_fd, iovec iovecs[], int iovec_count); //adds a write request using the provided request structure
 };
 
 #endif
