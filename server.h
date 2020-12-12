@@ -23,7 +23,7 @@
 #define READ_SIZE 8192 //how much one read request should read
 #define PORT 8000
 #define QUEUE_DEPTH 256 //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
-#define READ_BLOCK_SIZE 4096 //how much to read from a file at once
+#define READ_BLOCK_SIZE 8192 //how much to read from a file at once
 
 enum class event_type{ ACCEPT, READ, WRITE };
 
