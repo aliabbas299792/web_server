@@ -31,6 +31,8 @@ struct request {
   event_type event;
   int iovec_count;
   int client_socket;
+  int written = 0; //how far into the iovecs array to write from
+  int total_length = 0; //how much data is in the request, in bytes
   iovec iovecs[];
 };
 
@@ -46,6 +48,7 @@ class server{
     void (*write_callback)(int client_fd, server *web_server) = nullptr;
 
     int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
+    int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
     int setup_listener(int port); //sets up the listener socket
     void serverLoop();
   public:
@@ -53,7 +56,7 @@ class server{
     server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
 
     int add_read_req(int client_fd); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, iovec iovecs[], int iovec_count); //adds a write request using the provided request structure
+    int add_write_req(int client_fd, iovec iovecs[], int iovec_count, int content_length); //adds a write request using the provided request structure
 };
 
 #endif

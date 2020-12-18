@@ -88,15 +88,40 @@ int server::add_read_req(int client_fd){
   return 0;
 }
 
-int server::add_write_req(int client_fd, iovec iovecs[], int iovec_count) {
+int server::add_write_req(int client_fd, iovec iovecs[], int iovec_count, int content_length) {
   request *req = (request*)std::malloc(sizeof(request) + sizeof(iovec) * iovec_count);
   req->client_socket = client_fd;
   req->iovec_count = iovec_count;
   req->event = event_type::WRITE;
+  req->total_length = content_length;
   std::memcpy(req->iovecs, iovecs, sizeof(iovec) * iovec_count);
+  free(iovecs); //free the iovecs array from before
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_writev(sqe, req->client_socket, req->iovecs, req->iovec_count, 0); //do not write at an offset
+  io_uring_sqe_set_data(sqe, req);
+  io_uring_submit(&ring); //submits the event
+
+  return 0;
+}
+
+int server::add_write_req_continued(request *req, int written) {
+  req->written += written;
+  
+  auto blocks_written = (req->written - req->iovecs[0].iov_len)/READ_BLOCK_SIZE + 1; //the actual number written, and will also be used as an index to the next buffer
+  auto offset_in_current_block = (req->written - req->iovecs[0].iov_len) % READ_BLOCK_SIZE;
+  auto new_len = req->iovecs[blocks_written].iov_len - offset_in_current_block;
+
+  if(new_len < 0) {
+    std::cout << "ERROR: new len less than 0\n";
+    return -1;
+  }
+
+  req->iovecs[blocks_written].iov_len = new_len;
+  std::memcpy(static_cast<char*>(req->iovecs[blocks_written].iov_base), &static_cast<char*>(req->iovecs[blocks_written].iov_base)[offset_in_current_block], new_len);
+
+  io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+  io_uring_prep_writev(sqe, req->client_socket, &req->iovecs[blocks_written], req->iovec_count-blocks_written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
@@ -118,7 +143,7 @@ void server::serverLoop(){
       fatal_error("io_uring_wait_cqe");
     if(cqe->res < 0){
       fprintf(stderr, "async request failed: %s\n", strerror(-cqe->res));
-      exit(1);
+      //exit(1);
     }
     
     switch(req->event){
@@ -135,6 +160,13 @@ void server::serverLoop(){
         free(req);
         break;
       case event_type::WRITE:
+        std::cout << "written: " << cqe->res + req->written << "\n";
+        if(cqe->res + req->written < req->total_length && cqe->res > 0){
+          int rc = add_write_req_continued(req, cqe->res);
+          if(rc == 0) break;
+        }
+        if(cqe->res + req->written > req->total_length) std::cout << "NOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n\n\n";
+        if(cqe->res < 0) std::cout << "i CANNOT even\n\n\n";
         if(write_callback != nullptr) write_callback(req->client_socket, this);
         //below is cleaning up from the malloc stuff
         for(int i = 0; i < req->iovec_count; i++) free(req->iovecs[i].iov_base);
