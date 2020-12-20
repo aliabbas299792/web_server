@@ -29,11 +29,10 @@ enum class event_type{ ACCEPT, READ, WRITE };
 
 struct request {
   event_type event;
-  int iovec_count;
   int client_socket;
-  int written = 0; //how far into the iovecs array to write from
+  int written = 0; //how much written so far
   int total_length = 0; //how much data is in the request, in bytes
-  iovec iovecs[];
+  char *buffer = nullptr;
 };
 
 void fatal_error(std::string error_message);
@@ -44,7 +43,7 @@ class server{
     int listener_fd;
 
     void (*accept_callback)(int client_fd, server *web_server) = nullptr;
-    void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server) = nullptr;
+    void (*read_callback)(int client_fd, char* buffer, unsigned int length, server *web_server) = nullptr;
     void (*write_callback)(int client_fd, server *web_server) = nullptr;
 
     int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
@@ -53,10 +52,10 @@ class server{
     void serverLoop();
   public:
     //accept callbacks for ACCEPT, READ and WRITE
-    server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
+    server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, char *buffer, unsigned int length, server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
 
     int add_read_req(int client_fd); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, iovec iovecs[], int iovec_count, int content_length); //adds a write request using the provided request structure
+    int add_write_req(int client_fd, char *buffer, unsigned int length); //adds a write request using the provided request structure
 };
 
 #endif

@@ -5,7 +5,7 @@ void fatal_error(std::string error_message){
   exit(1);
 }
 
-server::server(void (*accept_callback)(int client_fd, server *web_server), void (*read_callback)(int client_fd, int iovec_count, iovec iovecs[], server *web_server), void (*write_callback)(int client_fd, server *web_server)) : accept_callback(accept_callback), read_callback(read_callback), write_callback(write_callback){
+server::server(void (*accept_callback)(int client_fd, server *web_server), void (*read_callback)(int client_fd, char *buffer, unsigned int length, server *web_server), void (*write_callback)(int client_fd, server *web_server)) : accept_callback(accept_callback), read_callback(read_callback), write_callback(write_callback){
   //above just sets the callbacks
 
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
@@ -72,33 +72,31 @@ int server::add_accept_req(int listener_fd, sockaddr_storage *client_address, so
 
 int server::add_read_req(int client_fd){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
-  request *req = (request*)std::malloc(sizeof(request) + sizeof(iovec)); //enough space for the request struct, and 1 iovec struct (we are using one to do the read request)
+  request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   
-  req->iovecs[0].iov_base= (iovec*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
-  req->iovecs[0].iov_len = READ_SIZE;
-  req->iovec_count = 1;
+  req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
+  req->total_length = READ_SIZE;
   req->event = event_type::READ;
   req->client_socket = client_fd;
-  std::memset(req->iovecs[0].iov_base, 0, sizeof(req->iovecs[0].iov_base));
+  std::memset(req->buffer, 0, READ_SIZE);
   
-  io_uring_prep_readv(sqe, client_fd, &req->iovecs[0], 1, 0); //don't read at an offset, and read with one iovec structure
+  io_uring_prep_read(sqe, client_fd, req->buffer, READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
   return 0;
 }
 
-int server::add_write_req(int client_fd, iovec iovecs[], int iovec_count, int content_length) {
-  request *req = (request*)std::malloc(sizeof(request) + sizeof(iovec) * iovec_count);
+int server::add_write_req(int client_fd, char *buffer, unsigned int length) {
+  request *req = (request*)std::malloc(sizeof(request));
+  std::memset(req, 0, sizeof(request));
   req->client_socket = client_fd;
-  req->iovec_count = iovec_count;
+  req->total_length = length;
   req->event = event_type::WRITE;
-  req->total_length = content_length;
-  std::memcpy(req->iovecs, iovecs, sizeof(iovec) * iovec_count);
-  free(iovecs); //free the iovecs array from before
-
+  req->buffer = buffer;
+  
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_writev(sqe, req->client_socket, req->iovecs, req->iovec_count, 0); //do not write at an offset
+  io_uring_prep_write(sqe, req->client_socket, buffer, length, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
@@ -108,20 +106,8 @@ int server::add_write_req(int client_fd, iovec iovecs[], int iovec_count, int co
 int server::add_write_req_continued(request *req, int written) {
   req->written += written;
   
-  auto blocks_written = (req->written - req->iovecs[0].iov_len)/READ_BLOCK_SIZE + 1; //the actual number written, and will also be used as an index to the next buffer
-  auto offset_in_current_block = (req->written - req->iovecs[0].iov_len) % READ_BLOCK_SIZE;
-  auto new_len = req->iovecs[blocks_written].iov_len - offset_in_current_block;
-
-  if(new_len < 0) {
-    std::cout << "ERROR: new len less than 0\n";
-    return -1;
-  }
-
-  req->iovecs[blocks_written].iov_len = new_len;
-  std::memcpy(static_cast<char*>(req->iovecs[blocks_written].iov_base), &static_cast<char*>(req->iovecs[blocks_written].iov_base)[offset_in_current_block], new_len);
-
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_writev(sqe, req->client_socket, &req->iovecs[blocks_written], req->iovec_count-blocks_written, 0); //do not write at an offset
+  io_uring_prep_write(sqe, req->client_socket, &req->buffer[req->written], req->total_length - req->written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
@@ -141,10 +127,8 @@ void server::serverLoop(){
 
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
-    if(cqe->res < 0){
-      fprintf(stderr, "async request failed: %s\n", strerror(-cqe->res));
-      //exit(1);
-    }
+    if(cqe->res < 0)
+      fprintf(stderr, "async request failed: %s\n\n", strerror(-cqe->res));
     
     switch(req->event){
       case event_type::ACCEPT:
@@ -154,22 +138,19 @@ void server::serverLoop(){
         free(req); //cleanup from the malloc in add_accept_req
         break;
       case event_type::READ:
-        if(read_callback != nullptr) read_callback(req->client_socket, req->iovec_count, req->iovecs, this);
+        if(read_callback != nullptr) read_callback(req->client_socket, req->buffer, req->total_length, this);
         //below is cleaning up from the malloc stuff
-        free(req->iovecs[0].iov_base);
+        free(req->buffer);
         free(req);
         break;
       case event_type::WRITE:
-        std::cout << "written: " << cqe->res + req->written << "\n";
         if(cqe->res + req->written < req->total_length && cqe->res > 0){
           int rc = add_write_req_continued(req, cqe->res);
           if(rc == 0) break;
         }
-        if(cqe->res + req->written > req->total_length) std::cout << "NOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n\n\n";
-        if(cqe->res < 0) std::cout << "i CANNOT even\n\n\n";
         if(write_callback != nullptr) write_callback(req->client_socket, this);
         //below is cleaning up from the malloc stuff
-        for(int i = 0; i < req->iovec_count; i++) free(req->iovecs[i].iov_base);
+        free(req->buffer);
         free(req);
         break;
     }
