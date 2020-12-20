@@ -96,21 +96,30 @@ int read_file(std::string filepath, char **buffer, int reserved_bytes = 0){
   return size;
 }
 
-int read_file_web(std::string filepath, char **buffer, int responseCode = 200){
+int read_file_web(std::string filepath, char **buffer, int responseCode = 200, bool accept_bytes = false){
   auto header_first_line = "";
+  std::cout << responseCode << "\n";
   switch(responseCode){
     case 200:
       header_first_line = "HTTP/1.1 200 OK\r\n";
+      break;
       break;
     default:
       header_first_line = "HTTP/1.1 404 Not Found\r\n";
   }
 
   const auto content_type = get_content_type(filepath);
-  const auto reserved_bytes = 150; //I'm estimating, header is probably going to be up to 150 bytes
+  const auto reserved_bytes = 200; //I'm estimating, header is probably going to be up to 200 bytes
   const auto size = read_file(filepath, buffer, reserved_bytes);
   const auto content_length = std::to_string(size);
-  const auto headers = header_first_line + content_type + "Content-Length: " + content_length + "\r\nConnection:";
+
+  std::string headers = "";
+  if(accept_bytes){
+    headers = header_first_line + content_type + "Accept-Ranges: bytes\r\nContent-Length: " + content_length + "\r\nRange: bytes=0-" + content_length + "/" + content_length + "\r\nConnection:";
+  }else{
+    headers = header_first_line + content_type + "Content-Length: " + content_length + "\r\nConnection:";
+  }
+
   const auto header_last = "Keep-Alive\r\n\r\n"; //last part of the header
 
   if(size < 0) return -1;
@@ -129,25 +138,29 @@ int read_file_web(std::string filepath, char **buffer, int responseCode = 200){
 void read_callback(int client_fd, char *buffer, unsigned int length, server *web_server){
   std::vector<std::string> headers;
 
-  char *str = nullptr;
-  while((str = strtok(((char*)buffer), "\r\n"))){ //retrieves the headers
-    headers.push_back(std::string(str, strlen(str)));
-    buffer = nullptr;
-  }
+  bool accept_bytes = false;
 
-  std::cout << headers[0] << "\n";
+  char *str = nullptr;
+  char *saveptr = nullptr;
+  while((str = strtok_r(((char*)buffer), "\r\n", &saveptr))){ //retrieves the headers
+    std::string tempStr = std::string(str, strlen(str));
+    
+    if(tempStr.find("Range: bytes=") != std::string::npos) accept_bytes = true;
+    buffer = nullptr;
+    headers.push_back(tempStr);
+  }
   
-  if(!strcmp(strtok((char*)headers[0].c_str(), " "), "GET")){
-    char *path = strtok(nullptr, " ");
+  if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){
+    char *path = strtok_r(nullptr, " ", &saveptr);
     std::string processed_path = std::string(&path[1], strlen(path)-1);
     processed_path = processed_path == "" ? "index.html" : processed_path;
 
-    char *http_version = strtok(nullptr, " ");
+    char *http_version = strtok_r(nullptr, " ", &saveptr);
 
     char *send_buffer = nullptr;
     int content_length = 0;
     
-    if((content_length = read_file_web(processed_path, &send_buffer)) != -1){
+    if((content_length = read_file_web(processed_path, &send_buffer, 200, accept_bytes)) != -1){
       web_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write function
     }else{
       content_length = read_file_web("404.html", &send_buffer, 400);
