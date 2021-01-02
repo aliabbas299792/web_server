@@ -149,7 +149,7 @@ void read_callback(int client_fd, char *buffer, unsigned int length, server *web
   if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){
     char *path = strtok_r(nullptr, " ", &saveptr);
     std::string processed_path = std::string(&path[1], strlen(path)-1);
-    processed_path = processed_path == "" ? "index.html" : processed_path;
+    processed_path = processed_path == "" ? "public/index.html" : "public/"+processed_path;
 
     char *http_version = strtok_r(nullptr, " ", &saveptr);
 
@@ -159,7 +159,7 @@ void read_callback(int client_fd, char *buffer, unsigned int length, server *web
     if((content_length = read_file_web(processed_path, &send_buffer, 200, accept_bytes)) != -1){
       web_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write function
     }else{
-      content_length = read_file_web("404.html", &send_buffer, 400);
+      content_length = read_file_web("public/404.html", &send_buffer, 400);
       web_server->add_write_req(client_fd, send_buffer, content_length);
     }
   }
