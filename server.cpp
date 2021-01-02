@@ -8,8 +8,6 @@ void fatal_error(std::string error_message){
 server::server(void (*accept_callback)(int client_fd, server *web_server), void (*read_callback)(int client_fd, char *buffer, unsigned int length, server *web_server), void (*write_callback)(int client_fd, server *web_server)) : accept_callback(accept_callback), read_callback(read_callback), write_callback(write_callback){
   //above just sets the callbacks
 
-  event_fd = eventfd(0, 0);
-
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
 
   this->listener_fd = setup_listener(PORT);
@@ -72,26 +70,17 @@ int server::add_accept_req(int listener_fd, sockaddr_storage *client_address, so
   return 0; //maybe return is required for something else later
 }
 
-int server::add_read_req(int client_fd, char **buff, int size){
+int server::add_read_req(int client_fd){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
-  int read_size = size;
-  
-  if(buff == nullptr){
-    req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
-    req->total_length = READ_SIZE;
-  }else{
-    req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
-    std::cout << (uint64_t)(req->buffer) << "\n";
-    *buff = req->buffer;
-    req->total_length = size;
-  }
+  req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
+  req->total_length = READ_SIZE;
   
   req->event = event_type::READ;
   req->client_socket = client_fd;
   std::memset(req->buffer, 0, READ_SIZE);
   
-  io_uring_prep_read(sqe, client_fd, req->buffer, read_size, 0); //don't read at an offset
+  io_uring_prep_read(sqe, client_fd, req->buffer, READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
@@ -125,15 +114,6 @@ int server::add_write_req_continued(request *req, int written) {
   return 0;
 }
 
-void read_wait(int client_fd, int event_fd){
-  pollfd *pfds = (pollfd*)std::malloc(sizeof(pollfd));
-  pfds[0].fd = event_fd;
-  pfds[0].events = POLLIN;
-
-  poll(pfds, 1, -1); //waits until a read is done
-  free(pfds);
-}
-
 void server::serverLoop(){
   io_uring_cqe *cqe;
   sockaddr_storage client_address;
@@ -148,22 +128,17 @@ void server::serverLoop(){
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     
-    std::cout << "GOT SOMETHING" << "\n";
-    
     switch(req->event){
       case event_type::ACCEPT: {
         if(accept_callback != nullptr) accept_callback(cqe->res, this);
         add_accept_req(listener_fd, &client_address, &client_address_length); //add another accept request
-        //add_read_req(cqe->res); //also need to read whatever request it sends immediately
+        add_read_req(cqe->res); //also need to read whatever request it sends immediately
         free(req); //cleanup from the malloc in add_accept_req
         break;
       }
       case event_type::READ: {
-        //if(read_callback != nullptr) read_callback(req->client_socket, req->buffer, req->total_length, this);
+        if(read_callback != nullptr) read_callback(req->client_socket, req->buffer, req->total_length, this);
         //below is cleaning up from the malloc stuff
-        std::cout << "READ DONE" << "\n";
-        uint64_t write_evt = 1;
-        write(event_fd, &write_evt, sizeof(uint64_t));
         free(req->buffer);
         free(req);
         break;

@@ -98,7 +98,7 @@ int read_file(std::string filepath, char **buffer, int reserved_bytes = 0){
 
 int read_file_web(std::string filepath, char **buffer, int responseCode = 200, bool accept_bytes = false){
   auto header_first_line = "";
-  std::cout << responseCode << "\n";
+  
   switch(responseCode){
     case 200:
       header_first_line = "HTTP/1.1 200 OK\r\n";
@@ -127,10 +127,6 @@ int read_file_web(std::string filepath, char **buffer, int responseCode = 200, b
   std::memset(*buffer, 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
   std::memcpy(*buffer, headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
   std::memcpy(&(*buffer)[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
-
-  /*for(int i = 0; i < size + reserved_bytes; i++){
-    fputc((*buffer)[i], stdout);
-  }*/
 
   return size + reserved_bytes; //the total request size
 }
@@ -170,7 +166,6 @@ void read_callback(int client_fd, char *buffer, unsigned int length, server *web
 }
 
 void write_callback(int client_fd, server *web_server){
-  std::cout << "closing\n\n";
   close(client_fd); //for web requests you close the socket right after
 }
 
