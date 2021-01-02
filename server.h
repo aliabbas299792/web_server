@@ -37,14 +37,21 @@ struct request {
 
 void fatal_error(std::string error_message);
 
+class server;
+
+typedef void(*accept_callback)(int client_fd, server *tcp_server, void *custom_obj);
+typedef void(*read_callback)(int client_fd, char* buffer, unsigned int length, server *tcp_server, void *custom_obj);
+typedef void(*write_callback)(int client_fd, server *tcp_server, void *custom_obj);
+
 class server{
   private:
     io_uring ring;
     int listener_fd;
+    void *custom_obj; //it can be anything
 
-    void (*accept_callback)(int client_fd, server *web_server) = nullptr;
-    void (*read_callback)(int client_fd, char* buffer, unsigned int length, server *web_server) = nullptr;
-    void (*write_callback)(int client_fd, server *web_server) = nullptr;
+    accept_callback a_cb = nullptr;
+    read_callback r_cb = nullptr;
+    write_callback w_cb = nullptr;
 
     int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
@@ -52,11 +59,10 @@ class server{
     void serverLoop();
   public:
     //accept callbacks for ACCEPT, READ and WRITE
-    server(void (*accept_callback)(int client_fd, server *web_server) = nullptr, void (*read_callback)(int client_fd, char *buffer, unsigned int length, server *web_server) = nullptr, void (*write_callback)(int client_fd, server *web_server) = nullptr);
+    server(accept_callback a_cb = nullptr, read_callback r_cb = nullptr, write_callback w_cb = nullptr, void *custom_obj = nullptr);
 
     int add_read_req(int client_fd); //adds a read request to the io_uring ring
     int add_write_req(int client_fd, char *buffer, unsigned int length); //adds a write request using the provided request structure
-    void read_wait(int client_fd); //for reading stuff
 };
 
 #endif

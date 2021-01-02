@@ -5,7 +5,7 @@ void fatal_error(std::string error_message){
   exit(1);
 }
 
-server::server(void (*accept_callback)(int client_fd, server *web_server), void (*read_callback)(int client_fd, char *buffer, unsigned int length, server *web_server), void (*write_callback)(int client_fd, server *web_server)) : accept_callback(accept_callback), read_callback(read_callback), write_callback(write_callback){
+server::server(accept_callback a_cb, read_callback r_cb, write_callback w_cb, void *custom_obj) : a_cb(a_cb), r_cb(r_cb), w_cb(w_cb), custom_obj(custom_obj) {
   //above just sets the callbacks
 
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
@@ -130,14 +130,14 @@ void server::serverLoop(){
     
     switch(req->event){
       case event_type::ACCEPT: {
-        if(accept_callback != nullptr) accept_callback(cqe->res, this);
+        if(a_cb != nullptr) a_cb(cqe->res, this, custom_obj);
         add_accept_req(listener_fd, &client_address, &client_address_length); //add another accept request
         add_read_req(cqe->res); //also need to read whatever request it sends immediately
         free(req); //cleanup from the malloc in add_accept_req
         break;
       }
       case event_type::READ: {
-        if(read_callback != nullptr) read_callback(req->client_socket, req->buffer, req->total_length, this);
+        if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, req->total_length, this, custom_obj);
         //below is cleaning up from the malloc stuff
         free(req->buffer);
         free(req);
@@ -148,7 +148,7 @@ void server::serverLoop(){
           int rc = add_write_req_continued(req, cqe->res);
           if(rc == 0) break;
         }
-        if(write_callback != nullptr) write_callback(req->client_socket, this);
+        if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
         //below is cleaning up from the malloc stuff
         free(req->buffer);
         free(req);
