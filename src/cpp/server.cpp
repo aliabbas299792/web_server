@@ -1,4 +1,4 @@
-#include "server.h"
+#include "../header/server.h"
 
 void fatal_error(std::string error_message){
   perror(std::string("Fatal Error: " + error_message).c_str());

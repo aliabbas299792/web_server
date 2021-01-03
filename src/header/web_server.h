@@ -10,18 +10,16 @@
 
 typedef struct stat stat_struct;
 
-void a_cb(int client_fd, server *tcp_server, void *custom_obj);
-void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, void *custom_obj);
-void w_cb(int client_fd, server *tcp_server, void *custom_obj);
-
 class web_server{
   io_uring ring;
 
-  int read_file(std::string filepath, char **buffer, int reserved_bytes = 0);
   long int get_file_size(int file_fd);
   std::string get_content_type(std::string filepath);
+
+  int read_file(std::string filepath, char **buffer, int reserved_bytes = 0);
 public:
   web_server();
+  int websocket_process();
   int read_file_web(std::string filepath, char **buffer, int responseCode = 200, bool accept_bytes = false);
 };
 

@@ -1,4 +1,4 @@
-#include "web_server.h"
+#include "../header/web_server.h"
 
 web_server::web_server(){
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
@@ -113,46 +113,4 @@ int web_server::read_file_web(std::string filepath, char **buffer, int responseC
   std::memcpy(&(*buffer)[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
 
   return size + reserved_bytes; //the total request size
-}
-
-void a_cb(int client_fd, server *tcp_server, void *custom_obj){
-  //std::cout << "accepted client with client_fd: " << client_fd << "\n";
-}
-
-void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, void *custom_obj){
-  std::vector<std::string> headers;
-
-  bool accept_bytes = false;
-
-  char *str = nullptr;
-  char *saveptr = nullptr;
-  while((str = strtok_r(((char*)buffer), "\r\n", &saveptr))){ //retrieves the headers
-    std::string tempStr = std::string(str, strlen(str));
-    
-    if(tempStr.find("Range: bytes=") != std::string::npos) accept_bytes = true;
-    buffer = nullptr;
-    headers.push_back(tempStr);
-  }
-  
-  if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){
-    char *path = strtok_r(nullptr, " ", &saveptr);
-    std::string processed_path = std::string(&path[1], strlen(path)-1);
-    processed_path = processed_path == "" ? "public/index.html" : "public/"+processed_path;
-
-    char *http_version = strtok_r(nullptr, " ", &saveptr);
-
-    char *send_buffer = nullptr;
-    int content_length = 0;
-    
-    if((content_length = ((web_server*)custom_obj)->read_file_web(processed_path, &send_buffer, 200, accept_bytes)) != -1){
-      tcp_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write function
-    }else{
-      content_length = ((web_server*)custom_obj)->read_file_web("public/404.html", &send_buffer, 400);
-      tcp_server->add_write_req(client_fd, send_buffer, content_length);
-    }
-  }
-}
-
-void w_cb(int client_fd, server *tcp_server, void *custom_obj){
-  close(client_fd); //for web requests you close the socket right after
 }
