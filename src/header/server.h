@@ -15,20 +15,18 @@
 
 #include <liburing.h> //for liburing
 
-#include <vector> //for vectors
-
-#include <iostream> //for string and iostream stuff
-
 #include <wolfssl/options.h>
 #include <wolfssl/ssl.h>
 
+#include <vector> //for vectors
+#include <iostream> //for string and iostream stuff
 #include <unordered_map>
+#include <unordered_set>
 
-#define BACKLOG 10 //max number of connections pending acceptance
-#define READ_SIZE 8192 //how much one read request should read
-#define PORT 443
-#define QUEUE_DEPTH 256 //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
-#define READ_BLOCK_SIZE 8192 //how much to read from a file at once
+constexpr int BACKLOG = 10; //max number of connections pending acceptance
+constexpr int READ_SIZE = 8192; //how much one read request should read
+constexpr int QUEUE_DEPTH = 256; //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
+constexpr int READ_BLOCK_SIZE = 8192; //how much to read from a file at once
 
 enum class event_type{ ACCEPT, READ, READ_ACCEPT, WRITE, WRITE_ACCEPT };
 
@@ -51,13 +49,14 @@ struct request {
 
 void fatal_error(std::string error_message);
 
-class server;
+class server; //forward declaration of server
 
 typedef void(*accept_callback)(int client_fd, server *tcp_server, void *custom_obj);
 typedef void(*read_callback)(int client_fd, char* buffer, unsigned int length, server *tcp_server, void *custom_obj);
 typedef void(*write_callback)(int client_fd, server *tcp_server, void *custom_obj);
 
-extern std::unordered_map<int, std::pair<char*, int>> accept_data;
+int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
+int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
 class server{
   private:
@@ -73,12 +72,35 @@ class server{
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
     int setup_listener(int port); //sets up the listener socket
     void serverLoop();
+
+    bool running_server = false;
+    
+    //used internally for sending messages
+    int add_read_req(int client_fd, bool accept = false); //adds a read request to the io_uring ring
+    int add_write_req(int client_fd, char *buffer, unsigned int length, bool accept = false); //adds a write request using the provided request structure
+
+    //TLS only variables and functions below
+    //make the below 2 functions friends, so that they can access private data
+    friend int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
+    friend int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
+
+    void tls_accept(int client_fd);
+    
+    bool is_tls = false;
+
+    WOLFSSL_CTX *wolfssl_ctx = nullptr; //the wolfssl context to use here
+    std::unordered_map<int, std::pair<char*, int>> accept_data; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object
+    std::unordered_set<int> active_connections; //the fd's of active connections
   public:
     //accept callbacks for ACCEPT, READ and WRITE
-    server(accept_callback a_cb = nullptr, read_callback r_cb = nullptr, write_callback w_cb = nullptr, void *custom_obj = nullptr);
+    server(int listen_port, accept_callback a_cb = nullptr, read_callback r_cb = nullptr, write_callback w_cb = nullptr, void *custom_obj = nullptr);
+    void setup_tls(std::string cert_location, std::string pkey_location); //sets up TLS using the certificate and private key provided
+    void start(); //function to start the server
 
-    int add_read_req(int client_fd, WOLFSSL *ssl = nullptr, bool accept = false); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, char *buffer, unsigned int length, WOLFSSL *ssl = nullptr, bool accept = false); //adds a write request using the provided request structure
+    void read(int client_fd);
+    void write(int client_fd, char *buffer, unsigned int length);
+    void close(int client_fd);
 };
 
 #endif

@@ -3,58 +3,8 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
-WOLFSSL *ssl;
-
-int callback_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback, sends a special accept read request to io_uring, make it not always do that
-  int sockfd = ((rw_cb_context*)ctx)->sockfd;
-  auto *tcp_server = ((rw_cb_context*)ctx)->tcp_server;
-
-  if(accept_data.count(sockfd)){ //if an entry exists in the map, use the data in it, otherwise make a request for it
-    const auto data = accept_data[sockfd];
-    const auto all_received = data.first;
-    const auto recvdAmount = data.second;
-
-    if(recvdAmount > sz){
-      //if the data needed in this call is less than what we have available,
-      //then copy that onto the provided buffer, and return the amount read
-      std::memcpy(buff, all_received, sz);
-      accept_data[sockfd] = { (char*)std::malloc(recvdAmount - sz), recvdAmount - sz };
-      std::memset(accept_data[sockfd].first, 0, recvdAmount - sz);
-      std::memcpy(accept_data[sockfd].first, &all_received[sz], recvdAmount - sz);
-      free(all_received); //making sure to free the original buffer
-      return sz;
-    }else{
-      std::memcpy(buff, all_received, sz); //since this is exactly how much we need, copy the data into the buffer
-      free(all_received); //making sure to free the original buffer
-      accept_data.erase(sockfd); //and erasing the item from the map, since we've used all the data it provided
-      return recvdAmount; //sz == recvdAmount in this case
-    }
-  }else{
-    tcp_server->add_read_req(sockfd, ssl, true);
-    return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
-  }
-}
-
-int callback_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, make it not always do that
-  int sockfd = ((rw_cb_context*)ctx)->sockfd;
-  auto *tcp_server = ((rw_cb_context*)ctx)->tcp_server;
-
-  tcp_server->add_write_req(sockfd, buff, sz, ssl, true);
-
-  return sz;
-}
-
 void a_cb(int client_fd, server *tcp_server, void *custom_obj){ //the accept callback
-  ssl = wolfSSL_new(ctx);
-  wolfSSL_set_fd(ssl, client_fd);
-
-  //set the read/write context data, from this scope,
-  //since once execution leaves this scope the references are invalid and we'll have to set the context data again
-  rw_cb_context ctx_data(tcp_server, client_fd);
-  wolfSSL_SetIOReadCtx(ssl, &ctx_data);
-  wolfSSL_SetIOWriteCtx(ssl, &ctx_data);
-
-  wolfSSL_accept(ssl); //initialise the wolfSSL accept procedure
+  std::cout << "Accepted new connection\n";
 }
 
 char *get_accept_header_value(std::string input) {
@@ -105,7 +55,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     char *data = (char*)std::malloc(resp.size());
     std::memcpy(data, resp.c_str(), resp.size());
 
-    tcp_server->add_write_req(client_fd, data, resp.size());
+    //tcp_server->add_write_req(client_fd, data, resp.size());
   } else if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){ //get callback
     char *path = strtok_r(nullptr, " ", &saveptr);
     std::string processed_path = std::string(&path[1], strlen(path)-1);
@@ -117,13 +67,13 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     int content_length = 0;
     
     if((content_length = ((web_server*)custom_obj)->read_file_web(processed_path, &send_buffer, 200, accept_bytes)) != -1){
-      tcp_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write function
+      //tcp_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write function
     }else{
       content_length = ((web_server*)custom_obj)->read_file_web("public/404.html", &send_buffer, 400);
-      tcp_server->add_write_req(client_fd, send_buffer, content_length);
+      //tcp_server->add_write_req(client_fd, send_buffer, content_length);
     }
   } else { //if nothing else, then just add in another read request for this socket, since we're not writing
-    tcp_server->add_read_req(client_fd);
+    //tcp_server->add_read_req(client_fd);
   }
 }
 
