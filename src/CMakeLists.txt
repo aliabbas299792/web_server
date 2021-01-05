@@ -9,4 +9,4 @@ file(GLOB_RECURSE sourceFiles "*.cpp" "*.h")
 
 add_executable(Liburing_Server ${sourceFiles})
 
-target_link_libraries(Liburing_Server -luring -lcrypto)
+target_link_libraries(Liburing_Server -luring -lcrypto -lwolfssl)

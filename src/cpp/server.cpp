@@ -1,5 +1,7 @@
 #include "../header/server.h"
 
+std::unordered_map<int, std::pair<char*, int>> accept_data;
+
 void fatal_error(std::string error_message){
   perror(std::string("Fatal Error: " + error_message).c_str());
   exit(1);
@@ -70,15 +72,21 @@ int server::add_accept_req(int listener_fd, sockaddr_storage *client_address, so
   return 0; //maybe return is required for something else later
 }
 
-int server::add_read_req(int client_fd){
+int server::add_read_req(int client_fd, WOLFSSL *ssl, bool accept){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
   req->total_length = READ_SIZE;
   
-  req->event = event_type::READ;
   req->client_socket = client_fd;
   std::memset(req->buffer, 0, READ_SIZE);
+
+  if(accept){
+    req->ssl = ssl;
+    req->event = event_type::READ_ACCEPT;
+  }else{
+    req->event = event_type::READ;
+  }
   
   io_uring_prep_read(sqe, client_fd, req->buffer, READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
@@ -87,13 +95,19 @@ int server::add_read_req(int client_fd){
   return 0;
 }
 
-int server::add_write_req(int client_fd, char *buffer, unsigned int length) {
+int server::add_write_req(int client_fd, char *buffer, unsigned int length, WOLFSSL *ssl, bool accept) {
   request *req = (request*)std::malloc(sizeof(request));
   std::memset(req, 0, sizeof(request));
   req->client_socket = client_fd;
   req->total_length = length;
-  req->event = event_type::WRITE;
   req->buffer = buffer;
+
+  if(accept){
+    req->ssl = ssl;
+    req->event = event_type::WRITE_ACCEPT;
+  }else{
+    req->event = event_type::WRITE;
+  }
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_write(sqe, req->client_socket, buffer, length, 0); //do not write at an offset
@@ -132,12 +146,12 @@ void server::serverLoop(){
       case event_type::ACCEPT: {
         if(a_cb != nullptr) a_cb(cqe->res, this, custom_obj);
         add_accept_req(listener_fd, &client_address, &client_address_length); //add another accept request
-        add_read_req(cqe->res); //also need to read whatever request it sends immediately
+        //add_read_req(cqe->res); //also need to read whatever request it sends immediately
         free(req); //cleanup from the malloc in add_accept_req
         break;
       }
       case event_type::READ: {
-        if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, req->total_length, this, custom_obj);
+        if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, cqe->res, this, custom_obj);
         //below is cleaning up from the malloc stuff
         free(req->buffer);
         free(req);
@@ -152,6 +166,25 @@ void server::serverLoop(){
         //below is cleaning up from the malloc stuff
         free(req->buffer);
         free(req);
+        break;
+      }
+      case event_type::READ_ACCEPT: {
+        accept_data[req->client_socket] = { req->buffer, cqe->res }; //stores the data in the map
+        
+        //set the read/write context data, from this scope,
+        //since once execution leaves this scope the references are invalid and we'll have to set the context data again
+        rw_cb_context ctx_data(this, req->client_socket);
+        wolfSSL_SetIOReadCtx(req->ssl, &ctx_data);
+        wolfSSL_SetIOWriteCtx(req->ssl, &ctx_data);
+
+        if(wolfSSL_accept(req->ssl) == 1){ //that means the connection was successfully established
+          std::cout << "connection established" << std::endl;
+        }
+        free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
+        break;
+      }
+      case event_type::WRITE_ACCEPT: {
+        free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
         break;
       }
     }
