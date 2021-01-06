@@ -27,19 +27,19 @@ constexpr int READ_SIZE = 8192; //how much one read request should read
 constexpr int QUEUE_DEPTH = 256; //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
 constexpr int READ_BLOCK_SIZE = 8192; //how much to read from a file at once
 
-enum class event_type{ ACCEPT, READ, READ_ACCEPT, WRITE, WRITE_ACCEPT, READ_SSL };
+enum class event_type{ ACCEPT, READ, READ_ACCEPT, READ_SSL, WRITE, WRITE_SSL };
 
 class server; //forward declaration
 
 struct rw_cb_context {
-  rw_cb_context(server *tcp_server, int sockfd) : tcp_server(tcp_server), sockfd(sockfd) {}
+  rw_cb_context(server *tcp_server, int client_socket) : tcp_server(tcp_server), client_socket(client_socket) {}
   server *tcp_server = nullptr;
-  int sockfd = -1;
+  int client_socket = -1;
 };
 
 struct request {
   event_type event;
-  int client_socket;
+  int client_socket = 0;
   WOLFSSL *ssl = nullptr;
   int written = 0; //how much written so far
   int total_length = 0; //how much data is in the request, in bytes
@@ -50,11 +50,11 @@ void fatal_error(std::string error_message);
 
 class server; //forward declaration of server
 
-typedef void(*accept_callback)(int client_fd, server *tcp_server, void *custom_obj);
-typedef void(*read_callback)(int client_fd, char* buffer, unsigned int length, server *tcp_server, void *custom_obj);
-typedef void(*write_callback)(int client_fd, server *tcp_server, void *custom_obj);
+typedef void(*accept_callback)(int client_socket, server *tcp_server, void *custom_obj);
+typedef void(*read_callback)(int client_socket, char* buffer, unsigned int length, server *tcp_server, void *custom_obj);
+typedef void(*write_callback)(int client_socket, server *tcp_server, void *custom_obj);
 
-int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int sockfd, bool accept);
+int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -76,16 +76,16 @@ class server{
     bool running_server = false;
     
     //used internally for sending messages
-    int add_read_req(int client_fd, bool accept = false, bool read_ssl = false); //adds a read request to the io_uring ring
-    int add_write_req(int client_fd, char *buffer, unsigned int length, bool accept = false); //adds a write request using the provided request structure
+    int add_read_req(int client_socket, bool accept = false); //adds a read request to the io_uring ring
+    int add_write_req(int client_socket, char *buffer, unsigned int length); //adds a write request using the provided request structure
 
     //TLS only variables and functions below
     //make the below 2 functions friends, so that they can access private data
-    friend int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int sockfd, bool accept);
+    friend int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
     friend int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
     friend int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
-    void tls_accept(int client_fd);
+    void tls_accept(int client_socket);
     
     bool is_tls = false;
 
@@ -99,8 +99,8 @@ class server{
     void setup_tls(std::string cert_location, std::string pkey_location); //sets up TLS using the certificate and private key provided
     void start(); //function to start the server
 
-    void write(int client_fd, char *buffer, unsigned int length);
-    void close(int client_fd);
+    void write_socket(int client_socket, char *buffer, unsigned int length);
+    void close_socket(int client_socket);
 };
 
 #endif

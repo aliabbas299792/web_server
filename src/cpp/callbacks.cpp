@@ -56,7 +56,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     std::memcpy(data, resp.c_str(), resp.size());
 
     //tcp_server->add_write_req(client_fd, data, resp.size());
-    tcp_server->write(client_fd, data, resp.size());
+    tcp_server->write_socket(client_fd, data, resp.size());
   } else if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){ //get callback
     char *path = strtok_r(nullptr, " ", &saveptr);
     std::string processed_path = std::string(&path[1], strlen(path)-1);
@@ -68,11 +68,11 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     int content_length = 0;
     
     if((content_length = ((web_server*)custom_obj)->read_file_web(processed_path, &send_buffer, 200, accept_bytes)) != -1){
-      tcp_server->write(client_fd, send_buffer, content_length);
-      //tcp_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write function
+      tcp_server->write_socket(client_fd, send_buffer, content_length);
+      //tcp_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write_socket function
     }else{
       content_length = ((web_server*)custom_obj)->read_file_web("public/404.html", &send_buffer, 400);
-      tcp_server->write(client_fd, send_buffer, content_length);
+      tcp_server->write_socket(client_fd, send_buffer, content_length);
       //tcp_server->add_write_req(client_fd, send_buffer, content_length);
     }
   } else { //if nothing else, then just add in another read request for this socket, since we're not writing
@@ -81,6 +81,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 }
 
 void w_cb(int client_fd, server *tcp_server, void *custom_obj){
-  close(client_fd); //for web requests you close the socket right after
+  std::cout << "write_socket callback\n";
+  tcp_server->close_socket(client_fd); //for web requests you close the socket right after
   //tcp_server->add_read_req(client_fd);
 }

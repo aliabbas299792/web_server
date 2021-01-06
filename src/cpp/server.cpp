@@ -1,52 +1,52 @@
 #include "../header/server.h"
 
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, make it not always do that
-  int sockfd = ((rw_cb_context*)ctx)->sockfd;
+  int client_socket = ((rw_cb_context*)ctx)->client_socket;
   auto *tcp_server = ((rw_cb_context*)ctx)->tcp_server;
 
-  if(tcp_server->active_connections.count(sockfd)) std::cout << "want to write: " << sz << "\n";
-  tcp_server->add_write_req(sockfd, buff, sz, true);
+  if(tcp_server->active_connections.count(client_socket)) std::cout << "want to write: " << sz << "\n";
+  tcp_server->add_write_req(client_socket, buff, sz);
 
   return sz;
 }
 
-int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int sockfd, bool accept){
-  const auto data = (*recvd_data)[sockfd];
+int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept){
+  const auto data = (*recvd_data)[client_socket];
   const auto all_received = data.first; //we don't free this buffer in this function, since it's taken care of in the io_uring loop
   const auto recvdAmount = data.second;
   if(recvdAmount > sz){
     //if the data needed in this call is less than what we have available,
     //then copy that onto the provided buffer, and return the amount read
     std::memcpy(buff, all_received, sz);
-    (*recvd_data)[sockfd] = { (char*)std::malloc(recvdAmount - sz), recvdAmount - sz };
-    std::memset((*recvd_data)[sockfd].first, 0, recvdAmount - sz);
-    std::memcpy((*recvd_data)[sockfd].first, &all_received[sz], recvdAmount - sz);
+    (*recvd_data)[client_socket] = { (char*)std::malloc(recvdAmount - sz), recvdAmount - sz };
+    std::memset((*recvd_data)[client_socket].first, 0, recvdAmount - sz);
+    std::memcpy((*recvd_data)[client_socket].first, &all_received[sz], recvdAmount - sz);
     return sz;
   }else if(recvdAmount < sz){ //in the off chance that there isn't enough data available for the full request
     if(accept)
-      tcp_server->add_read_req(sockfd, true);
+      tcp_server->add_read_req(client_socket, true);
     else
-      tcp_server->add_read_req(sockfd, false, true);
+      tcp_server->add_read_req(client_socket, false);
     return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
   }else{
     std::memcpy(buff, all_received, sz); //since this is exactly how much we need, copy the data into the buffer
-    recvd_data->erase(sockfd); //and erasing the item from the map, since we've used all the data it provided
+    recvd_data->erase(client_socket); //and erasing the item from the map, since we've used all the data it provided
     return recvdAmount; //sz == recvdAmount in this case
   }
 }
 
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
-  int sockfd = ((rw_cb_context*)ctx)->sockfd;
+  int client_socket = ((rw_cb_context*)ctx)->client_socket;
   auto *tcp_server = ((rw_cb_context*)ctx)->tcp_server;
   auto *recvd_data = &tcp_server->recvd_data;
 
-  if(tcp_server->active_connections.count(sockfd)){
-    return tls_recv_helper(recvd_data, tcp_server, buff, sz, sockfd, false);
+  if(tcp_server->active_connections.count(client_socket)){
+    return tls_recv_helper(recvd_data, tcp_server, buff, sz, client_socket, false);
   }else{
-    if(recvd_data->count(sockfd)){ //if an entry exists in the map, use the data in it, otherwise make a request for it
-      return tls_recv_helper(recvd_data, tcp_server, buff, sz, sockfd, true);
+    if(recvd_data->count(client_socket)){ //if an entry exists in the map, use the data in it, otherwise make a request for it
+      return tls_recv_helper(recvd_data, tcp_server, buff, sz, client_socket, true);
     }else{
-      tcp_server->add_read_req(sockfd, true);
+      tcp_server->add_read_req(client_socket, true);
       return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
     } 
   }
@@ -56,22 +56,22 @@ void server::start(){ //function to run the server
   if(!running_server) this->serverLoop();
 }
 
-void server::write(int client_fd, char *buff, unsigned int length){
+void server::write_socket(int client_socket, char *buff, unsigned int length){
   if(is_tls){
-    int rc = wolfSSL_write(socket_to_ssl[client_fd], buff, length); //just add in a way to properly write everything, and use WOLFSSL_CBIO_ERR_WANT_WRITE
+    int rc = wolfSSL_write(socket_to_ssl[client_socket], buff, length); //just add in a way to properly write everything, and use WOLFSSL_CBIO_ERR_WANT_WRITE
     std::cout << "written: " << rc << "\n";
     std::cout << "wanted to write properly: " << length << "\n";
   }else{
-    add_write_req(client_fd, buff, length);
+    add_write_req(client_socket, buff, length);
   }
 }
 
-void server::close(int client_fd){
-  wolfSSL_shutdown(socket_to_ssl[client_fd]);
-  active_connections.erase(client_fd);
-  socket_to_ssl.erase(client_fd);
-  recvd_data.erase(client_fd);
-  close(client_fd);
+void server::close_socket(int client_socket){
+  wolfSSL_shutdown(socket_to_ssl[client_socket]);
+  active_connections.erase(client_socket);
+  socket_to_ssl.erase(client_socket);
+  recvd_data.erase(client_socket);
+  close(client_socket);
 }
 
 void server::setup_tls(std::string cert_location, std::string pkey_location){
@@ -97,18 +97,18 @@ void server::setup_tls(std::string cert_location, std::string pkey_location){
   wolfSSL_CTX_SetIOSend(wolfssl_ctx, tls_send);
 }
 
-void server::tls_accept(int client_fd){
+void server::tls_accept(int client_socket){
   WOLFSSL *ssl = wolfSSL_new(wolfssl_ctx);
-  wolfSSL_set_fd(ssl, client_fd);
+  wolfSSL_set_fd(ssl, client_socket);
 
   //set the read/write context data, from this scope,
   //since once execution leaves this scope the references are invalid and we'll have to set the context data again
-  rw_cb_context ctx_data(this, client_fd);
+  rw_cb_context ctx_data(this, client_socket);
   wolfSSL_SetIOReadCtx(ssl, &ctx_data);
   wolfSSL_SetIOWriteCtx(ssl, &ctx_data);
 
   std::cout << "new made\n";
-  socket_to_ssl[client_fd] = ssl;
+  socket_to_ssl[client_socket] = ssl;
 
   wolfSSL_accept(ssl); //initialise the wolfSSL accept procedure
 }
@@ -176,51 +176,47 @@ int server::add_accept_req(int listener_fd, sockaddr_storage *client_address, so
   return 0; //maybe return is required for something else later
 }
 
-int server::add_read_req(int client_fd, bool accept, bool read_ssl){
+int server::add_read_req(int client_socket, bool accept){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
   req->total_length = READ_SIZE;
 
-  auto ssl = socket_to_ssl[client_fd];
+  auto ssl = socket_to_ssl[client_socket];
   
-  req->client_socket = client_fd;
+  req->client_socket = client_socket;
   std::memset(req->buffer, 0, READ_SIZE);
 
   if(accept){
     req->ssl = ssl;
     req->event = event_type::READ_ACCEPT;
-  }else if(read_ssl){
+  }else if(is_tls){
     req->ssl = ssl;
     req->event = event_type::READ_SSL;
   }else{
     req->event = event_type::READ;
   }
   
-  io_uring_prep_read(sqe, client_fd, req->buffer, READ_SIZE, 0); //don't read at an offset
+  io_uring_prep_read(sqe, client_socket, req->buffer, READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
   return 0;
 }
 
-int server::add_write_req(int client_fd, char *buffer, unsigned int length, bool accept) {
+int server::add_write_req(int client_socket, char *buffer, unsigned int length) {
   request *req = (request*)std::malloc(sizeof(request));
   std::memset(req, 0, sizeof(request));
-  req->client_socket = client_fd;
+  req->client_socket = client_socket;
   req->total_length = length;
 
-  if(accept){
-    req->event = event_type::WRITE_ACCEPT;
+  if(is_tls){
+    req->event = event_type::WRITE_SSL;
+    req->buffer = (char*)std::malloc(length);
+    std::memcpy(req->buffer, buffer, length);
   }else{
     req->event = event_type::WRITE;
     req->buffer = buffer;
-  }
-
-  if(is_tls){
-    std::cout << "copying the big buffer of length " << length << "\n";
-    req->buffer = (char*)std::malloc(length);
-    std::memcpy(req->buffer, buffer, length);
   }
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
@@ -312,14 +308,15 @@ void server::serverLoop(){
         if(wolfSSL_accept(req->ssl) == 1){ //that means the connection was successfully established
           if(a_cb != nullptr) a_cb(cqe->res, this, custom_obj);
           active_connections.insert(req->client_socket);
-          add_read_req(req->client_socket, false, true);
+          add_read_req(req->client_socket, false);
         }
         free(req->buffer); //free the buffer used
         free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
         break;
       }
-      case event_type::WRITE_ACCEPT: {
-        //you don't free the request buffer here, since wolfSSL takes care of that
+      case event_type::WRITE_SSL: {
+        if(w_cb != nullptr && active_connections.count(req->client_socket)) close(req->client_socket);
+        free(req->buffer);
         free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
         break;
       }
@@ -337,7 +334,7 @@ void server::serverLoop(){
         std::cout << "amout read: " << wolfSSL_get_error(req->ssl, amount_read) << "\n";
         if(r_cb != nullptr) r_cb(req->client_socket, buffer, amount_read, this, custom_obj);
 
-        add_read_req(req->client_socket, false, true); //adds another read request
+        //add_read_req(req->client_socket, false); //adds another read request
 
         free(buffer);
         free(req->buffer);
