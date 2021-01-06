@@ -2,7 +2,6 @@
 #define SERVER
 
 #include <cstring> //for memset and strtok
-#include <cstdlib> //for exit
 
 #include <stdio.h> //perror and printf
 #include <unistd.h> //also needed for syscall stuff
@@ -28,7 +27,7 @@ constexpr int READ_SIZE = 8192; //how much one read request should read
 constexpr int QUEUE_DEPTH = 256; //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
 constexpr int READ_BLOCK_SIZE = 8192; //how much to read from a file at once
 
-enum class event_type{ ACCEPT, READ, READ_ACCEPT, WRITE, WRITE_ACCEPT };
+enum class event_type{ ACCEPT, READ, READ_ACCEPT, WRITE, WRITE_ACCEPT, READ_SSL };
 
 class server; //forward declaration
 
@@ -55,6 +54,7 @@ typedef void(*accept_callback)(int client_fd, server *tcp_server, void *custom_o
 typedef void(*read_callback)(int client_fd, char* buffer, unsigned int length, server *tcp_server, void *custom_obj);
 typedef void(*write_callback)(int client_fd, server *tcp_server, void *custom_obj);
 
+int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int sockfd, bool accept);
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -76,11 +76,12 @@ class server{
     bool running_server = false;
     
     //used internally for sending messages
-    int add_read_req(int client_fd, bool accept = false); //adds a read request to the io_uring ring
+    int add_read_req(int client_fd, bool accept = false, bool read_ssl = false); //adds a read request to the io_uring ring
     int add_write_req(int client_fd, char *buffer, unsigned int length, bool accept = false); //adds a write request using the provided request structure
 
     //TLS only variables and functions below
     //make the below 2 functions friends, so that they can access private data
+    friend int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int sockfd, bool accept);
     friend int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
     friend int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -89,7 +90,7 @@ class server{
     bool is_tls = false;
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr; //the wolfssl context to use here
-    std::unordered_map<int, std::pair<char*, int>> accept_data; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, std::pair<char*, int>> recvd_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object
     std::unordered_set<int> active_connections; //the fd's of active connections
   public:
@@ -98,7 +99,6 @@ class server{
     void setup_tls(std::string cert_location, std::string pkey_location); //sets up TLS using the certificate and private key provided
     void start(); //function to start the server
 
-    void read(int client_fd);
     void write(int client_fd, char *buffer, unsigned int length);
     void close(int client_fd);
 };
