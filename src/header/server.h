@@ -17,6 +17,7 @@
 #include <wolfssl/options.h>
 #include <wolfssl/ssl.h>
 
+#include <queue>
 #include <vector> //for vectors
 #include <iostream> //for string and iostream stuff
 #include <unordered_map>
@@ -97,8 +98,9 @@ class server{
     bool is_tls = false;
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr; //the wolfssl context to use here
-    std::unordered_map<int, std::pair<char*, int>> recvd_data; //will store temporary data needed to negotiate a TLS connection
-    std::unordered_map<int, std::vector<write_data>> send_data; //will store data that must be written
+    std::unordered_map<int, std::pair<char*, int>> accept_recv_data; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, int> accept_send_data; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, std::queue<write_data>> send_data; //will store data that is queued to be written by wolfSSL_write
     std::unordered_map<int, rw_cb_context> socket_to_context; //maps socket fd to the SSL context that I want set
     std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object
     std::unordered_set<int> active_connections; //the fd's of active connections

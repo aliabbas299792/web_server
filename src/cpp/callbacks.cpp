@@ -4,7 +4,7 @@
 #include <openssl/evp.h>
 
 void a_cb(int client_fd, server *tcp_server, void *custom_obj){ //the accept callback
-  std::cout << "Accepted new connection\n";
+  std::cout << "Accepted new connection: " << client_fd << "\n";
 }
 
 char *get_accept_header_value(std::string input) {
