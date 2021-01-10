@@ -223,8 +223,8 @@ void server::serverLoop(){
         break;
       }
       case event_type::READ: {
-        if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, cqe->res, this, custom_obj);
-        add_read_req(req->client_socket);
+        if(cqe->res > 0)
+          if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, cqe->res, this, custom_obj);
         //below is cleaning up from the malloc stuff
         free(req->buffer);
         free(req);

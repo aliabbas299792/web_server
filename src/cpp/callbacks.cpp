@@ -30,8 +30,6 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 
   const auto websocket_key_token = "Sec-WebSocket-Key: ";
 
-  // std::cout << "Message: \n" << std::string(buffer, length) << "\n";
-
   char *str = nullptr;
   char *saveptr = nullptr;
   while((str = strtok_r(((char*)buffer), "\r\n", &saveptr))){ //retrieves the headers
