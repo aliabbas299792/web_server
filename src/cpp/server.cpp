@@ -314,6 +314,9 @@ void server::serverLoop(){
         break;
       }
       case event_type::READ_SSL: { //used for reading over TLS
+        if(accept_recv_data.count(req->client_socket)){
+          free(accept_recv_data[req->client_socket].first);
+        }
         accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
         char *buffer = (char*)std::malloc(READ_SIZE);
         int amount_read = 0;

@@ -52,10 +52,12 @@ int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *accept_recv_
 }
 
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
-  int client_socket = ((rw_cb_context*)ctx)->client_socket;
+  uint client_socket = ((rw_cb_context*)ctx)->client_socket;
   auto *tcp_server = ((rw_cb_context*)ctx)->tcp_server;
   auto *accept_recv_data = &tcp_server->accept_recv_data;
 
+  std::cout << "socket: " << client_socket << "\n";
+  std::cout << tcp_server->active_connections.bucket_count() << "\n";
   if(tcp_server->active_connections.count(client_socket)){
     return tls_recv_helper(accept_recv_data, tcp_server, buff, sz, client_socket, false);
   }else{
