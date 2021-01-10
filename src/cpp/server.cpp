@@ -14,7 +14,6 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
   if(is_tls){
     wolfSSL_shutdown(socket_to_ssl[client_socket]);
     active_connections.erase(client_socket);
-    socket_to_context.erase(client_socket);
     socket_to_ssl.erase(client_socket);
     
     //make sure to free any buffers and then erase the item
@@ -26,7 +25,7 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
     send_data.erase(client_socket);
     
     //make sure to free any buffer and then erase the item
-    //free(accept_recv_data[client_socket].first);
+    free(accept_recv_data[client_socket].first);
     accept_recv_data.erase(client_socket);
   }
   close(client_socket); //finally, close the socket
@@ -46,14 +45,8 @@ void server::tls_accept(int client_socket){
   WOLFSSL *ssl = wolfSSL_new(wolfssl_ctx);
   wolfSSL_set_fd(ssl, client_socket);
 
-  //set the read/write context data, from this scope,
-  //since once execution leaves this scope the references are invalid and we'll have to set the context data again
-  rw_cb_context ctx_data(this, client_socket);
-  socket_to_context[client_socket] = ctx_data; //sets the context data
-
-  const auto ctx_ref = &socket_to_context[client_socket];
-  wolfSSL_SetIOReadCtx(ssl, ctx_ref);
-  wolfSSL_SetIOWriteCtx(ssl, ctx_ref);
+  wolfSSL_SetIOReadCtx(ssl, this);
+  wolfSSL_SetIOWriteCtx(ssl, this);
 
   socket_to_ssl[client_socket] = ssl; //sets the ssl connection
 
@@ -252,15 +245,12 @@ void server::serverLoop(){
       }
       case event_type::ACCEPT_READ_SSL: {
         bool using_req_buffer = false; //flag to not free the req->buffer buffer
-        if(cqe->res > 0) { //if an error occurred, don't try to negotiate the connection
+        if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)) { //if an error occurred, don't try to negotiate the connection
           if(!accept_recv_data.count(req->client_socket)){ //if there is no data in the map, add it
             accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
             using_req_buffer = true;
           }else{ //otherwise copy the new data to the end of the old data
-          std::cout << "does it used: " << accept_recv_data.count(req->client_socket) << "\n";
             auto *old_data = &accept_recv_data[req->client_socket];
-            std::cout << old_data->second << " || " << cqe->res << "\n";
-            std::cout << "old data location: " << (long)old_data->first << "\n";
             char *new_buff = (char*)std::malloc(cqe->res + old_data->second);
             std::memcpy(new_buff, old_data->first, old_data->second);
             std::memcpy(&new_buff[old_data->second], req->buffer, cqe->res);
@@ -290,7 +280,7 @@ void server::serverLoop(){
         break;
       }
       case event_type::ACCEPT_WRITE_SSL: { //used only for when wolfSSL needs to write data during the TLS handshake
-        if(cqe->res <= 0) { //if an error occurred, don't try to negotiate the connection
+        if(cqe->res <= 0 || !socket_to_ssl.count(req->client_socket)) { //if an error occurred, don't try to negotiate the connection
           close_socket(req->client_socket); //making sure to remove any data relating to it as well
         }else{
           accept_send_data[req->client_socket] = cqe->res; //this is the amount that was last written, used in the tls_write callback
@@ -300,13 +290,12 @@ void server::serverLoop(){
         break;
       }
       case event_type::WRITE_SSL: { //used for generally writing over TLS
-        if(cqe->res > 0){ //ensure this connection is still active
+        if(cqe->res > 0 && socket_to_ssl.count(req->client_socket) && send_data.count(req->client_socket) && send_data[req->client_socket].size() > 0){ //ensure this connection is still active
           auto *data_ref = &send_data[req->client_socket].front();
           data_ref->last_written = cqe->res;
           int written = wolfSSL_write(socket_to_ssl[req->client_socket], data_ref->buff, data_ref->total_length);
           if(written > -1){ //if it's not negative, it's all been written, so this write call is done
             free(data_ref->buff);
-            data_ref->buff = nullptr; //makes it possible to avoid double free or corruption error (since you can call free on nullptr)
             send_data[req->client_socket].pop();
             if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
             if(send_data[req->client_socket].size()){ //if the write queue isn't empty, then write that as well
@@ -321,7 +310,7 @@ void server::serverLoop(){
         break;
       }
       case event_type::READ_SSL: { //used for reading over TLS
-        if(cqe->res > 0){
+        if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)){
           if(accept_recv_data.count(req->client_socket)){
             free(accept_recv_data[req->client_socket].first);
           }

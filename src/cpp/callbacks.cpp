@@ -4,7 +4,7 @@
 #include <openssl/evp.h>
 
 void a_cb(int client_fd, server *tcp_server, void *custom_obj){ //the accept callback
-  std::cout << "Accepted new connection: " << client_fd << "\n";
+  // std::cout << "Accepted new connection: " << client_fd << "\n";
 }
 
 char *get_accept_header_value(std::string input) {
@@ -30,7 +30,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 
   const auto websocket_key_token = "Sec-WebSocket-Key: ";
 
-  std::cout << "Message: \n" << std::string(buffer, length) << "\n";
+  // std::cout << "Message: \n" << std::string(buffer, length) << "\n";
 
   char *str = nullptr;
   char *saveptr = nullptr;
@@ -69,11 +69,9 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     
     if((content_length = ((web_server*)custom_obj)->read_file_web(processed_path, &send_buffer, 200, accept_bytes)) != -1){
       tcp_server->write_socket(client_fd, send_buffer, content_length);
-      //tcp_server->add_write_req(client_fd, send_buffer, content_length); //pass the data to the write_socket function
     }else{
       content_length = ((web_server*)custom_obj)->read_file_web("public/404.html", &send_buffer, 400);
       tcp_server->write_socket(client_fd, send_buffer, content_length);
-      //tcp_server->add_write_req(client_fd, send_buffer, content_length);
     }
   } else { //if nothing else, then just add in another read request for this socket, since we're not writing
     //tcp_server->add_read_req(client_fd);
@@ -81,7 +79,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 }
 
 void w_cb(int client_fd, server *tcp_server, void *custom_obj){
-  std::cout << "write_socket callback\n";
+  // std::cout << "write_socket callback\n";
   tcp_server->close_socket(client_fd); //for web requests you close the socket right after
   //tcp_server->add_read_req(client_fd);
 }

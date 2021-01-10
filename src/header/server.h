@@ -22,6 +22,7 @@
 #include <iostream> //for string and iostream stuff
 #include <unordered_map>
 #include <unordered_set>
+#include <chrono>
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
 constexpr int READ_SIZE = 8192; //how much one read request should read
@@ -101,7 +102,6 @@ class server{
     std::unordered_map<int, std::pair<char*, int>> accept_recv_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, int> accept_send_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, std::queue<write_data>> send_data; //will store data that is queued to be written by wolfSSL_write
-    std::unordered_map<int, rw_cb_context> socket_to_context; //maps socket fd to the SSL context that I want set
     std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object
     std::unordered_set<int> active_connections; //the fd's of active connections
   public:
