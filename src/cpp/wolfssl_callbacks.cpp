@@ -28,16 +28,17 @@ int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, send
 int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *accept_recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept){
   const auto data = (*accept_recv_data)[client_socket];
   const auto all_received = data.first; //we don't free this buffer in this function, since it's taken care of in the io_uring loop
-  const auto recvdAmount = data.second;
-  if(recvdAmount > sz){ //too much
+  const auto recvd_amount = data.second;
+  
+  if(recvd_amount > sz){ //too much
     //if the data needed in this call is less than what we have available,
     //then copy that onto the provided buffer, and return the amount read
     std::memcpy(buff, all_received, sz);
-    (*accept_recv_data)[client_socket] = { (char*)std::malloc(recvdAmount - sz), recvdAmount - sz };
-    std::memset((*accept_recv_data)[client_socket].first, 0, recvdAmount - sz);
-    std::memcpy((*accept_recv_data)[client_socket].first, &all_received[sz], recvdAmount - sz);
+    (*accept_recv_data)[client_socket] = { (char*)std::malloc(recvd_amount - sz), recvd_amount - sz };
+    std::memset((*accept_recv_data)[client_socket].first, 0, recvd_amount - sz);
+    std::memcpy((*accept_recv_data)[client_socket].first, &all_received[sz], recvd_amount - sz);
     return sz;
-  }else if(recvdAmount < sz){ //in the off chance that there isn't enough data available for the full request (too little)
+  }else if(recvd_amount < sz){ //in the off chance that there isn't enough data available for the full request (too little)
     if(accept)
       tcp_server->add_read_req(client_socket, true);
     else
@@ -46,7 +47,7 @@ int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *accept_recv_
   }else{ //just right
     std::memcpy(buff, all_received, sz); //since this is exactly how much we need, copy the data into the buffer
     accept_recv_data->erase(client_socket); //and erasing the item from the map, since we've used all the data it provided
-    return recvdAmount; //sz == recvdAmount in this case
+    return recvd_amount; //sz == recvd_amount in this case
   }
 }
 

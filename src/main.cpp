@@ -1,18 +1,16 @@
 #include "header/callbacks.h"
 
 void sigint_handler(int sig_number){
-  std::cout << " Shutting down...\n";
+  std::cout << "\nShutting down...\n";
   exit(0);
 }
-
-void sigpipe_handler(int sig_number){}
 
 #define FULLCHAIN_FILE "fullchain.cer"
 #define KEY_FILE  "website.key"
 
 int main(){
   signal(SIGINT, sigint_handler); //signal handler for when Ctrl+C is pressed
-  signal(SIGPIPE, sigpipe_handler); //signal handler for when a connection is closed while writing
+  signal(SIGPIPE, SIG_IGN); //signal handler for when a connection is closed while writing
 
   //create the server objects
   web_server basic_web_server;
