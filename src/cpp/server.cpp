@@ -26,7 +26,7 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
     send_data.erase(client_socket);
     
     //make sure to free any buffer and then erase the item
-    free(accept_recv_data[client_socket].first);
+    //free(accept_recv_data[client_socket].first);
     accept_recv_data.erase(client_socket);
   }
   close(client_socket); //finally, close the socket
@@ -161,7 +161,7 @@ int server::add_read_req(int client_socket, bool accept){
   
   io_uring_prep_read(sqe, client_socket, req->buffer, READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
-  std::cout << "submit: " << io_uring_submit(&ring) << "\n"; //submits the event
+  io_uring_submit(&ring); //submits the event
 
   return 0;
 }
@@ -211,10 +211,9 @@ void server::serverLoop(){
 
   while(true){
     char ret = io_uring_wait_cqe(&ring, &cqe);
-    request *req = (request*)cqe->user_data;
-
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
+    request *req = (request*)cqe->user_data;
     
     // std::cout << "an event occurred...\n";
     
@@ -252,55 +251,62 @@ void server::serverLoop(){
         break;
       }
       case event_type::ACCEPT_READ_SSL: {
-        if(cqe->res <= 0) { //if an error occurred, don't try to negotiate the connection
+        bool using_req_buffer = false; //flag to not free the req->buffer buffer
+        if(cqe->res > 0) { //if an error occurred, don't try to negotiate the connection
+          if(!accept_recv_data.count(req->client_socket)){ //if there is no data in the map, add it
+            accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
+            using_req_buffer = true;
+          }else{ //otherwise copy the new data to the end of the old data
+          std::cout << "does it used: " << accept_recv_data.count(req->client_socket) << "\n";
+            auto *old_data = &accept_recv_data[req->client_socket];
+            std::cout << old_data->second << " || " << cqe->res << "\n";
+            std::cout << "old data location: " << (long)old_data->first << "\n";
+            char *new_buff = (char*)std::malloc(cqe->res + old_data->second);
+            std::memcpy(new_buff, old_data->first, old_data->second);
+            std::memcpy(&new_buff[old_data->second], req->buffer, cqe->res);
+            free(old_data->first); //frees the old buffer
+            accept_recv_data[req->client_socket] = { new_buff, cqe->res + old_data->second };
+          }
+          if(wolfSSL_accept(req->ssl) == 1){ //that means the connection was successfully established
+            if(a_cb != nullptr) a_cb(req->client_socket, this, custom_obj);
+            active_connections.insert(req->client_socket);
+
+            char *buffer = (char*)std::malloc(READ_SIZE);
+            auto amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], buffer, READ_SIZE);
+            //above will either add in a read request, or get whatever is left in the local buffer (as we might have got the HTTP request with the handshake)
+
+            free(accept_recv_data[req->client_socket].first); //now that we're done with this data - free it
+            accept_recv_data.erase(req->client_socket);
+            if(amount_read > -1)
+              if(r_cb != nullptr) r_cb(req->client_socket, buffer, amount_read, this, custom_obj);
+            free(buffer);
+          }
+        }else{
           close_socket(req->client_socket); //making sure to remove any data relating to it as well
-          break;
         }
-        if(!accept_recv_data.count(req->client_socket)){ //if there is no data in the map, add it
-          accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
-        }else{ //otherwise copy the new data to the end of the old data
-          const auto *old_data = &accept_recv_data[req->client_socket];
-          char *new_buff = (char*)std::malloc(cqe->res + old_data->second);
-          std::memcpy(new_buff, old_data->first, old_data->second);
-          std::memcpy(&new_buff[old_data->second], req->buffer, cqe->res);
-          free(old_data->first); //frees the old buffer
-        }
-        if(wolfSSL_accept(req->ssl) == 1){ //that means the connection was successfully established
-          if(a_cb != nullptr) a_cb(req->client_socket, this, custom_obj);
-          active_connections.insert(req->client_socket);
-
-          char *buffer = (char*)std::malloc(READ_SIZE);
-          auto amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], buffer, READ_SIZE);
-          //above will either add in a read request, or get whatever is left in the local buffer (as we might have got the HTTP request with the handshake)
-
-          free(accept_recv_data[req->client_socket].first); //now that we're done with this data - free it
-          accept_recv_data[req->client_socket].first = nullptr; //makes it possible to avoid double free or corruption error (since you can call free on nullptr)
-          if(amount_read > -1)
-            if(r_cb != nullptr) r_cb(req->client_socket, buffer, amount_read, this, custom_obj);
-          free(buffer);
-        }
-        free(req->buffer); //free the buffer used
+        if(!using_req_buffer)
+          free(req->buffer); //free the buffer used
         free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
         break;
       }
       case event_type::ACCEPT_WRITE_SSL: { //used only for when wolfSSL needs to write data during the TLS handshake
         if(cqe->res <= 0) { //if an error occurred, don't try to negotiate the connection
           close_socket(req->client_socket); //making sure to remove any data relating to it as well
-          break;
+        }else{
+          accept_send_data[req->client_socket] = cqe->res; //this is the amount that was last written, used in the tls_write callback
+          wolfSSL_accept(socket_to_ssl[req->client_socket]); //call accept again
         }
-        accept_send_data[req->client_socket] = cqe->res; //this is the amount that was last written, used in the tls_write callback
-        wolfSSL_accept(socket_to_ssl[req->client_socket]); //call accept again
         free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
         break;
       }
       case event_type::WRITE_SSL: { //used for generally writing over TLS
-        if(active_connections.count(req->client_socket)){ //ensure this connection is still active
+        if(cqe->res > 0){ //ensure this connection is still active
           auto *data_ref = &send_data[req->client_socket].front();
           data_ref->last_written = cqe->res;
           int written = wolfSSL_write(socket_to_ssl[req->client_socket], data_ref->buff, data_ref->total_length);
           if(written > -1){ //if it's not negative, it's all been written, so this write call is done
             free(data_ref->buff);
-            // data_ref->buff = nullptr; //makes it possible to avoid double free or corruption error (since you can call free on nullptr)
+            data_ref->buff = nullptr; //makes it possible to avoid double free or corruption error (since you can call free on nullptr)
             send_data[req->client_socket].pop();
             if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
             if(send_data[req->client_socket].size()){ //if the write queue isn't empty, then write that as well
@@ -315,18 +321,21 @@ void server::serverLoop(){
         break;
       }
       case event_type::READ_SSL: { //used for reading over TLS
-        if(accept_recv_data.count(req->client_socket)){
-          free(accept_recv_data[req->client_socket].first);
+        if(cqe->res > 0){
+          if(accept_recv_data.count(req->client_socket)){
+            free(accept_recv_data[req->client_socket].first);
+          }
+          accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
+          char *buffer = (char*)std::malloc(READ_SIZE);
+          int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], buffer, READ_SIZE);
+          if(amount_read > 0) //a non-zero amount read implies that reading has finished
+            if(r_cb != nullptr) r_cb(req->client_socket, buffer, amount_read, this, custom_obj);
+          accept_recv_data.erase(req->client_socket);
+          //free all of the allocated memory
+          free(buffer);
+        }else{
+          close_socket(req->client_socket);
         }
-        accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
-        char *buffer = (char*)std::malloc(READ_SIZE);
-        int amount_read = 0;
-        if(cqe->res > 0) //if read 0 bytes, it means at end of file
-          amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], buffer, READ_SIZE);
-        if(amount_read > 0) //a non-zero amount read implies that reading has finished
-          if(r_cb != nullptr) r_cb(req->client_socket, buffer, amount_read, this, custom_obj);
-        //free all of the allocated memory
-        free(buffer);
         free(req->buffer);
         free(req);
         break;
