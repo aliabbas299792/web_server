@@ -12,7 +12,9 @@ void server::start(){ //function to run the server
 
 void server::close_socket(int client_socket){ //closes the socket and makes sure to delete it from all of the data structures
   if(is_tls){
-    wolfSSL_shutdown(socket_to_ssl[client_socket]);
+    auto ssl = socket_to_ssl[client_socket];
+    wolfSSL_shutdown(ssl);
+    wolfSSL_free(ssl);
     active_connections.erase(client_socket);
     socket_to_ssl.erase(client_socket);
     
@@ -231,13 +233,11 @@ void server::serverLoop(){
         break;
       }
       case event_type::WRITE: {
-        if(req->ssl == nullptr){
-          if(cqe->res + req->written < req->total_length && cqe->res > 0){
-            int rc = add_write_req_continued(req, cqe->res);
-            if(rc == 0) break;
-          }
-          if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
+        if(cqe->res + req->written < req->total_length && cqe->res > 0){
+          int rc = add_write_req_continued(req, cqe->res);
+          if(rc == 0) break;
         }
+        if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
         //below is cleaning up from the malloc stuff
         free(req->buffer);
         free(req);
@@ -246,6 +246,7 @@ void server::serverLoop(){
       case event_type::ACCEPT_READ_SSL: {
         bool using_req_buffer = false; //flag to not free the req->buffer buffer
         if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)) { //if an error occurred, don't try to negotiate the connection
+          auto ssl = socket_to_ssl[req->client_socket];
           if(!accept_recv_data.count(req->client_socket)){ //if there is no data in the map, add it
             accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
             using_req_buffer = true;
@@ -257,7 +258,7 @@ void server::serverLoop(){
             free(old_data->first); //frees the old buffer
             accept_recv_data[req->client_socket] = { new_buff, cqe->res + old_data->second };
           }
-          if(wolfSSL_accept(req->ssl) == 1){ //that means the connection was successfully established
+          if(wolfSSL_accept(ssl) == 1){ //that means the connection was successfully established
             if(a_cb != nullptr) a_cb(req->client_socket, this, custom_obj);
             active_connections.insert(req->client_socket);
 

@@ -37,6 +37,7 @@ int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *accept_recv_
     *data = { (char*)std::malloc(recvd_amount - sz), recvd_amount - sz };
     std::memset(data->first, 0, recvd_amount - sz);
     std::memcpy(data->first, &all_received[sz], recvd_amount - sz);
+    free(all_received);
     return sz;
   }else if(recvd_amount < sz){ //in the off chance that there isn't enough data available for the full request (too little)
     if(accept)
