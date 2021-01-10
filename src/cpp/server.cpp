@@ -259,10 +259,11 @@ void server::serverLoop(){
         if(!accept_recv_data.count(req->client_socket)){ //if there is no data in the map, add it
           accept_recv_data[req->client_socket] = { req->buffer, cqe->res };
         }else{ //otherwise copy the new data to the end of the old data
-          const auto old_data = accept_recv_data[req->client_socket];
-          char *new_buff = (char*)std::malloc(cqe->res + old_data.second);
-          std::memcpy(new_buff, old_data.first, old_data.second);
-          std::memcpy(&new_buff[old_data.second], req->buffer, cqe->res);
+          const auto *old_data = &accept_recv_data[req->client_socket];
+          char *new_buff = (char*)std::malloc(cqe->res + old_data->second);
+          std::memcpy(new_buff, old_data->first, old_data->second);
+          std::memcpy(&new_buff[old_data->second], req->buffer, cqe->res);
+          free(old_data->first); //frees the old buffer
         }
         if(wolfSSL_accept(req->ssl) == 1){ //that means the connection was successfully established
           if(a_cb != nullptr) a_cb(req->client_socket, this, custom_obj);
