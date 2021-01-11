@@ -61,15 +61,12 @@ int web_server::read_file(std::string filepath, std::vector<char>& buffer, int r
   const auto size = get_file_size(file_fd);
   int read_bytes = 0;
 
-  buffer.resize(reserved_bytes + size); 
-  //*buffer = (char*)malloc(reserved_bytes + size);
-  //std::memset(*buffer, 0, reserved_bytes + size);
+  buffer.resize(reserved_bytes + size);
 
   while(read_bytes != size){
     io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
 
-    //io_uring_prep_read(sqe, file_fd, &((char*)*buffer)[reserved_bytes], size, read_bytes); //don't read at an offset
-    io_uring_prep_read(sqe, file_fd, &buffer[reserved_bytes], size, read_bytes); //don't read at an offset
+    io_uring_prep_read(sqe, file_fd, &buffer[reserved_bytes], size - read_bytes, read_bytes); //don't read at an offset
     io_uring_submit(&ring); //submits the event
 
     io_uring_cqe *cqe;
@@ -101,6 +98,9 @@ std::vector<char> web_server::read_file_web(std::string filepath, int responseCo
 
   std::vector<char> buffer{};
   const auto size = read_file(filepath, buffer, reserved_bytes);
+
+  if(size < 0) return std::vector<char>{}; //return an empty array if the file was not found (negative length)
+
   const auto content_length = std::to_string(size);
 
   std::string headers = "";
@@ -111,13 +111,10 @@ std::vector<char> web_server::read_file_web(std::string filepath, int responseCo
   }
 
   const auto header_last = "Keep-Alive\r\n\r\n"; //last part of the header
-
-  if(size < 0) return std::vector<char>{};
   
   std::memset(&buffer[0], 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
   std::memcpy(&buffer[0], headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
   std::memcpy(&buffer[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
 
-  //return std::vector<char>(buffer, buffer + size + reserved_bytes); //the total request size
   return buffer;
 }
