@@ -20,7 +20,7 @@ class web_server{
 public:
   web_server();
   int websocket_process();
-  int read_file_web(std::string filepath, char **buffer, int responseCode = 200, bool accept_bytes = false);
+  std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
 };
 
 #endif
