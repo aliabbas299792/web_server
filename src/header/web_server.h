@@ -16,7 +16,7 @@ class web_server{
   long int get_file_size(int file_fd);
   std::string get_content_type(std::string filepath);
 
-  int read_file(std::string filepath, char **buffer, int reserved_bytes = 0);
+  int read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes);
 public:
   web_server();
   int websocket_process();
