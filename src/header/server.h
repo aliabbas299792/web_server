@@ -104,6 +104,7 @@ class server{
     void start(); //function to start the server
 
     void write_socket(int client_socket, std::vector<char> &&buff);
+    void read_socket(int client_socket);
     void close_socket(int client_socket);
 };
 

@@ -14,8 +14,8 @@ int main(){
 
   //create the server objects
   web_server basic_web_server;
-  server tcp_server(80, a_cb, r_cb, w_cb, &basic_web_server); //pass function pointers and a custom object
-  //tcp_server.setup_tls(FULLCHAIN_FILE, KEY_FILE);
+  server tcp_server(443, a_cb, r_cb, w_cb, &basic_web_server); //pass function pointers and a custom object
+  tcp_server.setup_tls(FULLCHAIN_FILE, KEY_FILE);
   tcp_server.start();
 
   return 0;

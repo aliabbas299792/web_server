@@ -1,10 +1,10 @@
 #include "../header/server.h"
 
-int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, make it not always do that
+int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, and returns how much was written from the send_data map, if appropriate
   int client_socket = wolfSSL_get_fd(ssl);
   auto *tcp_server = (server*)ctx;
 
-  if(tcp_server->active_connections.count(client_socket) && tcp_server->send_data[client_socket].size() > 0){
+  if(tcp_server->active_connections.count(client_socket) && tcp_server->send_data[client_socket].size() > 0){ //as long as the client is definitely active, then send data if there is any
     if(tcp_server->send_data[client_socket].front().last_written == -1){
       tcp_server->add_write_req(client_socket, buff, sz);
       return WOLFSSL_CBIO_ERR_WANT_WRITE;
@@ -32,10 +32,16 @@ int tls_recv_helper(std::unordered_map<int, std::vector<char>> *accept_recv_data
   if(recvd_amount > sz){ //too much
     //if the data needed in this call is less than what we have available,
     //then copy that onto the provided buffer, and return the amount read
-    std::vector<char> new_data(recvd_amount - sz);
-    std::memcpy(&new_data[0], &(*data)[sz], recvd_amount - sz);
+    //also then moves the residual data to the beginning properly, dealing with overlaps too
     std::memcpy(buff, &(*data)[0], sz);
-    *data = new_data;
+    const auto overlap = recvd_amount - 2*sz;
+    if(overlap > 0){
+      std::memcpy(&(*data)[0], &(*data)[sz], sz);
+      std::memcpy(&(*data)[sz], &(*data)[2*sz], overlap);
+    }else{
+      std::memcpy(&(*data)[0], &(*data)[sz], recvd_amount - sz);
+    }
+    data->resize(recvd_amount - sz);
     return sz;
   }else if(recvd_amount < sz){ //in the off chance that there isn't enough data available for the full request (too little)
     if(accept)

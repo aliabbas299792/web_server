@@ -2,6 +2,7 @@
 
 server::server(int listen_port, accept_callback a_cb, read_callback r_cb, write_callback w_cb, void *custom_obj) : a_cb(a_cb), r_cb(r_cb), w_cb(w_cb), custom_obj(custom_obj) {
   //above just sets the callbacks
+  std::memset(&ring, 0, sizeof(io_uring));
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
   this->listener_fd = setup_listener(listen_port); //setup the listener socket
 }
@@ -17,16 +18,8 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
     wolfSSL_free(ssl);
     active_connections.erase(client_socket);
     socket_to_ssl.erase(client_socket);
-    
     send_data.erase(client_socket);
-    
-    //make sure to free any buffer and then erase the item
     accept_recv_data.erase(client_socket);
-
-    std::cout << "accept_recv_data size: " << accept_recv_data.size() << "\n";
-    std::cout << "send_data size: " << send_data.size() << "\n";
-    std::cout << "socket_to_ssl size: " << socket_to_ssl.size() << "\n";
-    std::cout << "active_connections size: " << active_connections.size() << "\n\n";
   }
   close(client_socket); //finally, close the socket
 }
@@ -39,6 +32,10 @@ void server::write_socket(int client_socket, std::vector<char> &&buff){
   }else{
     add_write_req(client_socket, buff.data(), buff.size()); //adds a plain HTTP write request
   }
+}
+
+void server::read_socket(int client_socket){
+  add_read_req(client_socket, false);
 }
 
 void server::tls_accept(int client_socket){
@@ -212,32 +209,30 @@ void server::serverLoop(){
     
     switch(req->event){
       case event_type::ACCEPT: {
+        add_accept_req(listener_fd, &client_address, &client_address_length);
         if(is_tls) {
           tls_accept(cqe->res);
         }else{
           if(a_cb != nullptr) a_cb(cqe->res, this, custom_obj);
           add_read_req(cqe->res); //also need to read whatever request it sends immediately
         }
-        add_accept_req(listener_fd, &client_address, &client_address_length);
-        free(req); //cleanup from the malloc in add_accept_req
+        req->buffer = nullptr; //done with the request buffer
         break;
       }
       case event_type::READ: {
         if(cqe->res > 0)
           if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, cqe->res, this, custom_obj);
-        //below is cleaning up from the malloc stuff
-        free(req->buffer);
-        free(req);
+        req->buffer = nullptr; //done with the request buffer
         break;
       }
       case event_type::WRITE: {
         if(cqe->res + req->written < req->total_length && cqe->res > 0){
           int rc = add_write_req_continued(req, cqe->res);
+          req->buffer = nullptr; //done with the request buffer
           if(rc == 0) break;
         }
         if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
-        //below is cleaning up from the malloc stuff
-        free(req);
+        req->buffer = nullptr; //done with the request buffer
         break;
       }
       case event_type::ACCEPT_READ_SSL: {
@@ -265,7 +260,6 @@ void server::serverLoop(){
         }else{
           close_socket(req->client_socket); //making sure to remove any data relating to it as well
         }
-        free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
         break;
       }
       case event_type::ACCEPT_WRITE_SSL: { //used only for when wolfSSL needs to write data during the TLS handshake
@@ -275,7 +269,7 @@ void server::serverLoop(){
           accept_send_data[req->client_socket] = cqe->res; //this is the amount that was last written, used in the tls_write callback
           wolfSSL_accept(socket_to_ssl[req->client_socket]); //call accept again
         }
-        free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
+        req->buffer = nullptr; //done with the request buffer
         break;
       }
       case event_type::WRITE_SSL: { //used for generally writing over TLS
@@ -294,7 +288,7 @@ void server::serverLoop(){
         }else{
           close_socket(req->client_socket); //otherwise make sure that the socket is closed properly
         }
-        free(req); //free the memory allocated for the request, but not the memory for the buffer itself, that's handled in the receive callback
+        req->buffer = nullptr; //done with the request buffer
         break;
       }
       case event_type::READ_SSL: { //used for reading over TLS
@@ -305,15 +299,16 @@ void server::serverLoop(){
           if(amount_read > 0) //a non-zero amount read implies that reading has finished
             if(r_cb != nullptr) r_cb(req->client_socket, buffer.data(), amount_read, this, custom_obj);
           accept_recv_data.erase(req->client_socket);
-          //free all of the allocated memory
         }else{
           close_socket(req->client_socket);
         }
-        free(req->buffer);
-        free(req);
         break;
       }
     }
+
+    //free any malloc'd data
+    free(req->buffer);
+    free(req);
 
     io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
   }

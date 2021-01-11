@@ -54,20 +54,22 @@ std::string web_server::get_content_type(std::string filepath){
   return "Content-Type: application/octet-stream\r\n";
 }
 
-int web_server::read_file(std::string filepath, char **buffer, int reserved_bytes){
+int web_server::read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes){
   int file_fd = open(filepath.c_str(), O_RDONLY);
   if(file_fd < 0) return -1;
 
   const auto size = get_file_size(file_fd);
   int read_bytes = 0;
 
-  *buffer = (char*)malloc(reserved_bytes + size);
-  std::memset(*buffer, 0, reserved_bytes + size);
+  buffer.resize(reserved_bytes + size); 
+  //*buffer = (char*)malloc(reserved_bytes + size);
+  //std::memset(*buffer, 0, reserved_bytes + size);
 
   while(read_bytes != size){
     io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
 
-    io_uring_prep_read(sqe, file_fd, &((char*)*buffer)[reserved_bytes], size, read_bytes); //don't read at an offset
+    //io_uring_prep_read(sqe, file_fd, &((char*)*buffer)[reserved_bytes], size, read_bytes); //don't read at an offset
+    io_uring_prep_read(sqe, file_fd, &buffer[reserved_bytes], size, read_bytes); //don't read at an offset
     io_uring_submit(&ring); //submits the event
 
     io_uring_cqe *cqe;
@@ -76,6 +78,8 @@ int web_server::read_file(std::string filepath, char **buffer, int reserved_byte
 
     io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
   }
+
+  close(file_fd);
   
   return size;
 }
@@ -87,15 +91,16 @@ std::vector<char> web_server::read_file_web(std::string filepath, int responseCo
     case 200:
       header_first_line = "HTTP/1.1 200 OK\r\n";
       break;
-      break;
     default:
       header_first_line = "HTTP/1.1 404 Not Found\r\n";
   }
 
   const auto content_type = get_content_type(filepath);
   const auto reserved_bytes = 200; //I'm estimating, header is probably going to be up to 200 bytes
-  char *buffer = nullptr;
-  const auto size = read_file(filepath, &buffer, reserved_bytes);
+  //char *buffer = nullptr;
+
+  std::vector<char> buffer{};
+  const auto size = read_file(filepath, buffer, reserved_bytes);
   const auto content_length = std::to_string(size);
 
   std::string headers = "";
@@ -107,11 +112,12 @@ std::vector<char> web_server::read_file_web(std::string filepath, int responseCo
 
   const auto header_last = "Keep-Alive\r\n\r\n"; //last part of the header
 
-  if(size < 0) return std::vector<char>{0};
+  if(size < 0) return std::vector<char>{};
   
-  std::memset(buffer, 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
-  std::memcpy(buffer, headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
+  std::memset(&buffer[0], 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
+  std::memcpy(&buffer[0], headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
   std::memcpy(&buffer[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
 
-  return std::vector<char>(buffer, buffer + size + reserved_bytes); //the total request size
+  //return std::vector<char>(buffer, buffer + size + reserved_bytes); //the total request size
+  return buffer;
 }
