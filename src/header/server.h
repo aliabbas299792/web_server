@@ -33,6 +33,12 @@ enum class event_type{ ACCEPT, ACCEPT_READ_SSL, ACCEPT_WRITE_SSL, READ, READ_SSL
 
 class server; //forward declaration
 
+struct rw_cb_context {
+  rw_cb_context(server *tcp_server = nullptr, int client_socket = -1) : tcp_server(tcp_server), client_socket(client_socket) {}
+  server *tcp_server;
+  int client_socket;
+};
+
 struct request {
   event_type event;
   int client_socket = 0;
@@ -43,8 +49,9 @@ struct request {
 };
 
 struct write_data {
-  write_data(std::vector<char> &&buff) : buff(buff) {}
-  std::vector<char> buff;
+  write_data(char *buff, int total_length) : buff(buff), total_length(total_length) {}
+  char *buff;
+  int total_length;
   int last_written = -1;
 };
 
@@ -56,7 +63,7 @@ typedef void(*accept_callback)(int client_socket, server *tcp_server, void *cust
 typedef void(*read_callback)(int client_socket, char* buffer, unsigned int length, server *tcp_server, void *custom_obj);
 typedef void(*write_callback)(int client_socket, server *tcp_server, void *custom_obj);
 
-int tls_recv_helper(std::unordered_map<int, std::vector<char>> *accept_recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
+int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -83,7 +90,7 @@ class server{
 
     //TLS only variables and functions below
     //make the below 2 functions friends, so that they can access private data
-    friend int tls_recv_helper(std::unordered_map<int, std::vector<char>> *accept_recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
+    friend int tls_recv_helper(std::unordered_map<int, std::pair<char*, int>> *recvd_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
     friend int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
     friend int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -92,7 +99,7 @@ class server{
     bool is_tls = false;
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr; //the wolfssl context to use here
-    std::unordered_map<int, std::vector<char>> accept_recv_data; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, std::pair<char*, int>> accept_recv_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, int> accept_send_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, std::queue<write_data>> send_data; //will store data that is queued to be written by wolfSSL_write
     std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object
@@ -103,7 +110,7 @@ class server{
     void setup_tls(std::string fullchain_location, std::string pkey_location); //sets up TLS using the certificate and private key provided
     void start(); //function to start the server
 
-    void write_socket(int client_socket, std::vector<char> &&buff);
+    void write_socket(int client_socket, char *buffer, unsigned int length);
     void close_socket(int client_socket);
 };
 

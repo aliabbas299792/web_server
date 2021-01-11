@@ -80,7 +80,7 @@ int web_server::read_file(std::string filepath, char **buffer, int reserved_byte
   return size;
 }
 
-std::vector<char> web_server::read_file_web(std::string filepath, int responseCode, bool accept_bytes){
+int web_server::read_file_web(std::string filepath, char **buffer, int responseCode, bool accept_bytes){
   auto header_first_line = "";
   
   switch(responseCode){
@@ -94,8 +94,7 @@ std::vector<char> web_server::read_file_web(std::string filepath, int responseCo
 
   const auto content_type = get_content_type(filepath);
   const auto reserved_bytes = 200; //I'm estimating, header is probably going to be up to 200 bytes
-  char *buffer = nullptr;
-  const auto size = read_file(filepath, &buffer, reserved_bytes);
+  const auto size = read_file(filepath, buffer, reserved_bytes);
   const auto content_length = std::to_string(size);
 
   std::string headers = "";
@@ -107,11 +106,11 @@ std::vector<char> web_server::read_file_web(std::string filepath, int responseCo
 
   const auto header_last = "Keep-Alive\r\n\r\n"; //last part of the header
 
-  if(size < 0) return std::vector<char>{0};
+  if(size < 0) return -1;
   
-  std::memset(buffer, 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
-  std::memcpy(buffer, headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
-  std::memcpy(&buffer[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
+  std::memset(*buffer, 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
+  std::memcpy(*buffer, headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
+  std::memcpy(&(*buffer)[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
 
-  return std::vector<char>(buffer, buffer + size + reserved_bytes); //the total request size
+  return size + reserved_bytes; //the total request size
 }
