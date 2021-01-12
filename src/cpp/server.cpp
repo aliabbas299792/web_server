@@ -8,6 +8,7 @@ server::server(int listen_port, accept_callback a_cb, read_callback r_cb, write_
 }
 
 void server::start(){ //function to run the server
+  std::cout << "Running server\n";
   if(!running_server) this->serverLoop();
 }
 
@@ -28,9 +29,9 @@ void server::write_socket(int client_socket, std::vector<char> &&buff){
   if(is_tls){
     send_data[client_socket].push(write_data(std::move(buff))); //adds this to the write queue for this socket
     if(send_data[client_socket].size() == 1) //if only thing to write is what we just pushed, then call wolfSSL_write
-      wolfSSL_write(socket_to_ssl[client_socket], buff.data(), buff.size()); //writes the file using wolfSSL
+      wolfSSL_write(socket_to_ssl[client_socket], &buff[0], buff.size()); //writes the file using wolfSSL
   }else{
-    add_write_req(client_socket, buff.data(), buff.size()); //adds a plain HTTP write request
+    add_write_req(client_socket, &buff[0], buff.size()); //adds a plain HTTP write request
   }
 }
 
@@ -71,6 +72,8 @@ void server::setup_tls(std::string fullchain_location, std::string pkey_location
   //set the wolfSSL callbacks
   wolfSSL_CTX_SetIORecv(wolfssl_ctx, tls_recv);
   wolfSSL_CTX_SetIOSend(wolfssl_ctx, tls_send);
+
+  std::cout << "TLS will be used\n";
 }
 
 int server::setup_listener(int port) {
@@ -250,12 +253,12 @@ void server::serverLoop(){
             active_connections.insert(req->client_socket);
 
             std::vector<char> buffer(READ_SIZE);
-            auto amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], buffer.data(), READ_SIZE);
+            auto amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], READ_SIZE);
             //above will either add in a read request, or get whatever is left in the local buffer (as we might have got the HTTP request with the handshake)
 
             accept_recv_data.erase(req->client_socket);
             if(amount_read > -1)
-              if(r_cb != nullptr) r_cb(req->client_socket, buffer.data(), amount_read, this, custom_obj);
+              if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], amount_read, this, custom_obj);
           }
         }else{
           close_socket(req->client_socket); //making sure to remove any data relating to it as well
@@ -276,13 +279,13 @@ void server::serverLoop(){
         if(cqe->res > 0 && socket_to_ssl.count(req->client_socket) && send_data.count(req->client_socket) && send_data[req->client_socket].size() > 0){ //ensure this connection is still active
           auto *data_ref = &send_data[req->client_socket].front();
           data_ref->last_written = cqe->res;
-          int written = wolfSSL_write(socket_to_ssl[req->client_socket], data_ref->buff.data(), data_ref->buff.size());
+          int written = wolfSSL_write(socket_to_ssl[req->client_socket], &(data_ref->buff[0]), data_ref->buff.size());
           if(written > -1){ //if it's not negative, it's all been written, so this write call is done
             send_data[req->client_socket].pop();
             if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj);
             if(send_data[req->client_socket].size()){ //if the write queue isn't empty, then write that as well
               data_ref = &send_data[req->client_socket].front();
-              wolfSSL_write(socket_to_ssl[req->client_socket], data_ref->buff.data(), data_ref->buff.size());
+              wolfSSL_write(socket_to_ssl[req->client_socket], &(data_ref->buff[0]), data_ref->buff.size());
             }
           }
         }else{
@@ -295,9 +298,9 @@ void server::serverLoop(){
         if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)){
           accept_recv_data[req->client_socket] = std::vector<char>(req->buffer, req->buffer + cqe->res);
           std::vector<char> buffer(READ_SIZE);
-          int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], buffer.data(), READ_SIZE);
+          int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], READ_SIZE);
           if(amount_read > 0) //a non-zero amount read implies that reading has finished
-            if(r_cb != nullptr) r_cb(req->client_socket, buffer.data(), amount_read, this, custom_obj);
+            if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], amount_read, this, custom_obj);
           accept_recv_data.erase(req->client_socket);
         }else{
           close_socket(req->client_socket);

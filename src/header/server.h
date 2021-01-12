@@ -4,11 +4,8 @@
 #include <cstring> //for memset and strtok
 
 #include <stdio.h> //perror and printf
-#include <unistd.h> //also needed for syscall stuff
 #include <netdb.h> //for networking stuff like addrinfo
 
-#include <sys/stat.h> //fstat
-#include <sys/ioctl.h> //ioctl
 #include <sys/syscall.h> //syscall stuff parameters (as in like __NR_io_uring_enter/__NR_io_uring_setup)
 #include <sys/mman.h> //for mmap
 

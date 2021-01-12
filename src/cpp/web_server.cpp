@@ -1,32 +1,15 @@
 #include "../header/web_server.h"
+#include "../header/utility.h"
 
 web_server::web_server(){
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
 }
 
-long int web_server::get_file_size(int file_fd){
-  stat_struct file_stat;
-
-  if(fstat(file_fd, &file_stat) < 0)
-    fatal_error("file stat");
-  
-  if(S_ISBLK(file_stat.st_mode)){
-    uint long long size_bytes;
-    if(ioctl(file_fd, BLKGETSIZE64, &size_bytes) != 0)
-      fatal_error("file stat ioctl");
-    
-    return size_bytes;
-  }else if(S_ISREG(file_stat.st_mode)){
-    return file_stat.st_size;
-  }
-
-  return -1;
-}
-
 std::string web_server::get_content_type(std::string filepath){
   char *file_extension_data = (char*)filepath.c_str();
   std::string file_extension = "";
-  while((file_extension_data = strtok(file_extension_data, "."))){
+  char *saveptr = nullptr;
+  while((file_extension_data = strtok_r(file_extension_data, ".", &saveptr))){
     file_extension = file_extension_data;
     file_extension_data = nullptr;
   }
