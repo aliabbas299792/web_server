@@ -62,6 +62,7 @@ class server{
     io_uring ring;
     int listener_fd;
     void *custom_obj; //it can be anything
+    std::unordered_map<int, std::vector<char>> pending_recvd_data; //will store temporary data for a normal read
 
     accept_callback a_cb = nullptr;
     read_callback r_cb = nullptr;
@@ -80,7 +81,7 @@ class server{
 
     //TLS only variables and functions below
     //make the below 2 functions friends, so that they can access private data
-    friend int tls_recv_helper(std::unordered_map<int, std::vector<char>> *accept_recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
+    friend int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
     friend int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
     friend int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -89,7 +90,7 @@ class server{
     bool is_tls = false;
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr; //the wolfssl context to use here
-    std::unordered_map<int, std::vector<char>> accept_recv_data; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, std::vector<char>> recv_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, int> accept_send_data; //will store temporary data needed to negotiate a TLS connection
     std::unordered_map<int, std::queue<write_data>> send_data; //will store data that is queued to be written by wolfSSL_write
     std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object

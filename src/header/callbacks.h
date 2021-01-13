@@ -3,6 +3,8 @@
 
 #include "web_server.h"
 
+using uchar = unsigned char;
+
 void a_cb(int client_fd, server *tcp_server, void *custom_obj);
 void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, void *custom_obj);
 void w_cb(int client_fd, server *tcp_server, void *custom_obj);

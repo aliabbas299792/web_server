@@ -20,7 +20,7 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
     active_connections.erase(client_socket);
     socket_to_ssl.erase(client_socket);
     send_data.erase(client_socket);
-    accept_recv_data.erase(client_socket);
+    recv_data.erase(client_socket);
   }
   close(client_socket); //finally, close the socket
 }
@@ -241,12 +241,11 @@ void server::serverLoop(){
       case event_type::ACCEPT_READ_SSL: {
         if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)) { //if an error occurred, don't try to negotiate the connection
           auto ssl = socket_to_ssl[req->client_socket];
-          if(!accept_recv_data.count(req->client_socket)){ //if there is no data in the map, add it
-            accept_recv_data[req->client_socket] = std::vector<char>(req->buffer, req->buffer + cqe->res);
+          if(!recv_data.count(req->client_socket)){ //if there is no data in the map, add it
+            recv_data[req->client_socket] = std::vector<char>(req->buffer, req->buffer + cqe->res);
           }else{ //otherwise copy the new data to the end of the old data
-            auto *buffer = &accept_recv_data[req->client_socket];
-            accept_recv_data[req->client_socket].resize(buffer->size() + cqe->res);
-            std::memcpy(&buffer[buffer->size()], req->buffer, cqe->res);
+            auto *buffer = &recv_data[req->client_socket];
+            buffer->insert(buffer->end(), req->buffer, req->buffer + cqe->res);
           }
           if(wolfSSL_accept(ssl) == 1){ //that means the connection was successfully established
             if(a_cb != nullptr) a_cb(req->client_socket, this, custom_obj);
@@ -256,7 +255,7 @@ void server::serverLoop(){
             auto amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], READ_SIZE);
             //above will either add in a read request, or get whatever is left in the local buffer (as we might have got the HTTP request with the handshake)
 
-            accept_recv_data.erase(req->client_socket);
+            recv_data.erase(req->client_socket);
             if(amount_read > -1)
               if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], amount_read, this, custom_obj);
           }
@@ -296,12 +295,20 @@ void server::serverLoop(){
       }
       case event_type::READ_SSL: { //used for reading over TLS
         if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)){
-          accept_recv_data[req->client_socket] = std::vector<char>(req->buffer, req->buffer + cqe->res);
-          std::vector<char> buffer(READ_SIZE);
-          int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], READ_SIZE);
-          if(amount_read > 0) //a non-zero amount read implies that reading has finished
+          int to_read_amount = READ_SIZE; //the default read size
+          if(recv_data.count(req->client_socket)){ //will correctly deal with needing to call wolfSSL_read multiple times
+            auto *vec_member = &recv_data[req->client_socket];
+            vec_member->insert(vec_member->end(), req->buffer, req->buffer + cqe->res);
+            to_read_amount = vec_member->size(); //the read amount has got to be bigger, since the pending data could be more than READ_SIZE
+          }else{
+            recv_data[req->client_socket] = std::vector<char>(req->buffer, req->buffer + cqe->res);
+          }
+          std::vector<char> buffer(to_read_amount);
+          int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], to_read_amount);
+          if(amount_read > 0){ //a non-zero amount read implies that reading has finished
             if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], amount_read, this, custom_obj);
-          accept_recv_data.erase(req->client_socket);
+            recv_data.erase(req->client_socket);
+          }
         }else{
           close_socket(req->client_socket);
         }
