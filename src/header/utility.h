@@ -24,7 +24,7 @@ void sigint_handler(int sig_number); //handler used in main for handling SIGINT
 //removes first n elements from a vector
 template <typename T>
 void remove_first_n_elements(std::vector<T> &data, int num_elements_to_remove){ //deals correctly with overlaps
-  const auto size = data.size();;
+  const auto size = data.size();
   const auto overlap = size - 2*num_elements_to_remove;
   if(overlap > 0){
     std::memcpy(&data[0], &data[num_elements_to_remove], num_elements_to_remove);
@@ -33,6 +33,20 @@ void remove_first_n_elements(std::vector<T> &data, int num_elements_to_remove){ 
     std::memcpy(&data[0], &data[num_elements_to_remove], size - num_elements_to_remove);
   }
   data.resize(size - num_elements_to_remove);
+}
+
+template <typename T>
+void remove_first_n_elements(T *data, int length, T **ret_buff, int num_elements_to_remove){ //deals correctly with overlaps
+  const auto size = length;
+  const auto overlap = size - 2*num_elements_to_remove;
+  if(overlap > 0){
+    std::memcpy(&data[0], &data[num_elements_to_remove], num_elements_to_remove);
+    std::memcpy(&data[num_elements_to_remove], &data[2*num_elements_to_remove], overlap);
+  }else{
+    std::memcpy(&data[0], &data[num_elements_to_remove], size - num_elements_to_remove);
+  }
+  *ret_buff = (T*)std::malloc(size - num_elements_to_remove);
+  std::memcpy(*ret_buff, data, size - num_elements_to_remove);
 }
 
 #endif

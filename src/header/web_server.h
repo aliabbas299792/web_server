@@ -22,7 +22,7 @@ public:
   int websocket_process();
   std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
   std::unordered_map<int, receiving_data_info> receiving_data; //for client socket to data
-  std::unordered_map<int, std::vector<uchar>> data_store; //for client socket to data
+  std::unordered_map<int, std::vector<uchar>> websocket_frames; //for client socket to websocket frames concatenated
   
   std::unordered_set<int> websocket_connections;
 };

@@ -18,24 +18,10 @@ std::string get_accept_header_value(std::string input) {
   return base64data;
 }
 
-receiving_data_info websocket_frame_info(std::vector<uchar> buffer){
-  int offset = 0;
-  ulong length = buffer[1] & 0x7f;
-  if(length == 126){
-    offset = 2;
-    length = ntohs(*((u_short*)&buffer[2]));
-  }else if(length == 127){
-    offset = 8;
-    length = ntohs(*((u_long*)&buffer[2]));
-  }
-
-  return receiving_data_info(length + 6 + offset, buffer); //basically the entire request hasn't actually been received yet
-}
-
 std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data){
-  const uint fin = ((int)data[0] & 0x80) == 0x80;
-  const uint opcode = (int)data[0] & 0xf;
-  const uint mask = ((int)data[1] & 0x80) == 0x80;
+  const uint fin = (data[0] & 0x80) == 0x80;
+  const uint opcode = data[0] & 0xf;
+  const uint mask = (data[1] & 0x80) == 0x80;
 
   if(!mask) return {-1, {}};
 
@@ -49,8 +35,6 @@ std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> dat
     offset = 8;
     length = ntohs(*((u_long*)&data[2]));
   }
-  
-  if(data.size() - 6 - offset != length) return {length, data}; //basically the entire request hasn't actually been received yet
 
   const std::vector<uchar> masking_key{ data[2+offset], data[3+offset], data[4+offset], data[5+offset] };
 
@@ -73,26 +57,21 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 
   const auto websocket_key_token = "Sec-WebSocket-Key: ";
 
-  std::vector<uchar> buff_vec{};
-  buff_vec.insert(buff_vec.end(), buffer, buffer + length);
-
   char *str = nullptr;
   char *saveptr = nullptr;
-  while((str = strtok_r(((char*)buffer), "\r\n", &saveptr))){ //retrieves the headers
+  char *buffer_str = buffer;
+  while((str = strtok_r(((char*)buffer_str), "\r\n", &saveptr))){ //retrieves the headers
     std::string tempStr = std::string(str, strlen(str));
     
     if(tempStr.find("Range: bytes=") != std::string::npos) accept_bytes = true;
     if(tempStr.find("Sec-WebSocket-Key") != std::string::npos)
       sec_websocket_key = tempStr.substr(strlen(websocket_key_token));
-    buffer = nullptr;
+    buffer_str = nullptr;
     headers.push_back(tempStr);
   }
 
   if(sec_websocket_key != ""){ //websocket connection callback
-    std::cout << "Test: " << get_accept_header_value("dGhlIHNhbXBsZSBub25jZQ==").size() << "\n";
-
     const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
-    std::cout << accept_header_value.size() << " " << sec_websocket_key << "\n";
     const auto resp = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept_header_value + "\r\n\r\n";
 
     std::vector<char> send_buffer(resp.size());
@@ -115,33 +94,80 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       send_buffer = basic_web_server->read_file_web("public/404.html", 400);
       tcp_server->write_socket(client_fd, std::move(send_buffer));
     }
-  } else { //if nothing else, then just add in another read request for this socket, since we're not writing
-    auto frame_info = websocket_frame_info(buff_vec);
+  } else { //this bit should be just websocket frames
 
-    if(frame_info.buffer.size() == frame_info.length){ //exactly how much was needed
-      std::cout << "one shot exactly enough\n";
-    }else if(basic_web_server->receiving_data.count(client_fd)){ //if there is already some pending data
-      const auto *pending_item = &basic_web_server->receiving_data[client_fd];
-      if(frame_info.buffer.size() + pending_item->buffer.size() == pending_item->length){
-        std::cout << "multiple receives exactly enough\n";
-      }else if(frame_info.buffer.size() + pending_item->buffer.size() < pending_item->length){ //too little data
-        auto *vec_member = &basic_web_server->receiving_data[client_fd].buffer;
-        vec_member->insert(vec_member->end(), std::make_move_iterator(frame_info.buffer.begin()), std::make_move_iterator(frame_info.buffer.end()) ); 
-      }else{ //too much data
+    ulong packet_length = buffer[1] & 0x7f;
+    if(packet_length == 126){
+      packet_length = ntohs(*((u_short*)&((uchar*)buffer)[2])) + 2; //the 2 bytes extra needed to store the length are added
+    }else if(packet_length == 127){
+      packet_length = be64toh(*((u_long*)&((uchar*)buffer)[2])) + 8; //the 8 bytes extra needed to store the length are added, be64toh used because ntohl is 32 bit
+    }
+    packet_length += 6; // +6 bytes for the header data
+
+    //figure out why the incorrect length for the packet is being read
+
+    std::cout << "length: " << be64toh(*((u_long*)&((uchar*)buffer)[2])) << std::endl;
+
+    for(int i = 0; i < 10; i++){
+      printf("%d ", ((uchar*)buffer)[i]);
+    }
+    std::cout << "\n\n";
+
+    std::vector<uchar> frame{};
+
+    if(basic_web_server->receiving_data.count(client_fd)){ //if there is already some pending data
+      auto *pending_item = &basic_web_server->receiving_data[client_fd];
+
+      if(length + pending_item->buffer.size() == pending_item->length){
         auto *recvd_info = &basic_web_server->receiving_data[client_fd];
-        const auto required_length = recvd_info->length - recvd_info->buffer.size();
-        recvd_info->buffer.insert(recvd_info->buffer.end(), std::make_move_iterator(frame_info.buffer.begin()), std::make_move_iterator(frame_info.buffer.begin() + required_length) );
-        remove_first_n_elements(recvd_info->buffer, required_length);
+        recvd_info->buffer.insert(recvd_info->buffer.end(), buffer, buffer + length);
+        frame = std::move(recvd_info->buffer);
+        basic_web_server->receiving_data.erase(client_fd);
+
+      }else if(length + pending_item->buffer.size() < pending_item->length){ //too little data
+        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
+
+      }else{ //too much data
+        long required_length = pending_item->length - pending_item->buffer.size();
+        //required_length = required_length > length ? length : required_length;
+        std::cout << pending_item->length << " " << required_length << " " << length << "\n";
+        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
+        //remove_first_n_elements(buffer, , required_length);
       }
+
+    }else if(length == packet_length){ //is exactly how much was needed
+      frame.insert(frame.begin(), buffer, buffer + length);
+      
     }else{ //if there is no pending data, make this pending
       auto *pending_item = &basic_web_server->receiving_data[client_fd];
-      pending_item->length = frame_info.length;
-      pending_item->buffer.insert(pending_item->buffer.end(), std::make_move_iterator(frame_info.buffer.begin()), std::make_move_iterator(frame_info.buffer.end()) ); 
+      pending_item->length = packet_length;
+      pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
     }
 
-    /*auto processed_data = decode_websocket_frame(buff_vec);
+    //by this point the frame has definitely been fully received
+    
+    if(frame.size()){
+      auto processed_data = decode_websocket_frame(frame);
 
-    if(processed_data.first != -3){
+      if(processed_data.first == -3){ // -3 is to indicate that it's done
+        if(basic_web_server->websocket_frames.count(client_fd)){
+          auto *vec_member = &basic_web_server->websocket_frames[client_fd];
+          vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
+          std::cout << std::string((char*)&(*vec_member)[vec_member->size() - 200], 200) << "\n";
+          std::cout << "finished multi frame receive: " << vec_member->size() << "\n";
+          basic_web_server->websocket_frames.erase(client_fd);
+        }else{
+          std::cout << std::string((char*)&processed_data.second[processed_data.second.size() - 200], 200) << "\n";
+          std::cout << "finished multi frame receive: " << processed_data.second.size() << "\n";
+          //std::cout << std::string((char*)&processed_data.second[0], processed_data.second.size()) << "\n";
+        }
+      }else if(processed_data.first == -2){
+        auto *vec_member = &basic_web_server->websocket_frames[client_fd];
+        vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
+      }
+    }
+
+    /*if(processed_data.first != -3){
       auto *vec_member = &basic_web_server->receiving_data[client_fd];
       vec_member->insert(vec_member->end(), std::make_move_iterator(processed_data.second.begin()), std::make_move_iterator(processed_data.second.end()) );
     }
