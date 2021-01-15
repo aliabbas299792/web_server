@@ -18,6 +18,16 @@ std::string get_accept_header_value(std::string input) {
   return base64data;
 }
 
+ulong get_ws_frame_length(const char *buffer){
+  ulong packet_length = buffer[1] & 0x7f;
+  if(packet_length == 126){
+    packet_length = ntohs(*((u_short*)&((uchar*)buffer)[2])) + 2; //the 2 bytes extra needed to store the length are added
+  }else if(packet_length == 127){
+    packet_length = be64toh(*((u_long*)&((uchar*)buffer)[2])) + 8; //the 8 bytes extra needed to store the length are added, be64toh used because ntohl is 32 bit
+  }
+  return packet_length + 6; // +6 bytes for the header data
+}
+
 std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data){
   const uint fin = (data[0] & 0x80) == 0x80;
   const uint opcode = data[0] & 0xf;
@@ -48,80 +58,90 @@ std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> dat
   return {-3, decoded};
 }
 
+bool is_valid_http_req(const char* buff, int length){
+  if(length < 16) return false; //minimum size for valid HTTP request is 16 bytes
+  const char *types[] = { "GET ", "POST ", "PUT ", "DELETE ", "PATCH " };
+  u_char valid = 0x1f;
+  for(int i = 0; i < 7; i++) //length of "DELETE " is 7 characters
+    for(int j = 0; j < 5; j++) //5 different types
+      if(i < strlen(types[j]) && (valid >> j) & 0x1 && types[j][i] != buff[i]) valid &= 0x1f ^ (1 << j);
+  return valid;
+}
+
 void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, void *custom_obj){
-  std::vector<std::string> headers;
   const auto basic_web_server = (web_server*)custom_obj;
 
-  bool accept_bytes = false;
-  std::string sec_websocket_key = "";
+  if(is_valid_http_req(buffer, length)){ //if not a valid HTTP req, then probably a websocket frame
+    std::vector<std::string> headers;
 
-  const auto websocket_key_token = "Sec-WebSocket-Key: ";
+    bool accept_bytes = false;
+    std::string sec_websocket_key = "";
 
-  char *str = nullptr;
-  char *saveptr = nullptr;
-  char *buffer_str = buffer;
-  while((str = strtok_r(((char*)buffer_str), "\r\n", &saveptr))){ //retrieves the headers
-    std::string tempStr = std::string(str, strlen(str));
-    
-    if(tempStr.find("Range: bytes=") != std::string::npos) accept_bytes = true;
-    if(tempStr.find("Sec-WebSocket-Key") != std::string::npos)
-      sec_websocket_key = tempStr.substr(strlen(websocket_key_token));
-    buffer_str = nullptr;
-    headers.push_back(tempStr);
-  }
+    const auto websocket_key_token = "Sec-WebSocket-Key: ";
 
-  if(sec_websocket_key != ""){ //websocket connection callback
-    const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
-    const auto resp = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept_header_value + "\r\n\r\n";
+    char *str = nullptr;
+    char *saveptr = nullptr;
+    char *buffer_str = buffer;
+    while((str = strtok_r(((char*)buffer_str), "\r\n", &saveptr))){ //retrieves the headers
+      std::string tempStr = std::string(str, strlen(str));
+      
+      if(tempStr.find("Range: bytes=") != std::string::npos) accept_bytes = true;
+      if(tempStr.find("Sec-WebSocket-Key") != std::string::npos)
+        sec_websocket_key = tempStr.substr(strlen(websocket_key_token));
+      buffer_str = nullptr;
+      headers.push_back(tempStr);
+    }
 
-    std::vector<char> send_buffer(resp.size());
-    std::memcpy(&send_buffer[0], resp.c_str(), resp.size());
+    if(sec_websocket_key != ""){ //websocket connection callback
+      const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
+      const auto resp = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept_header_value + "\r\n\r\n";
 
-    tcp_server->write_socket(client_fd, std::move(send_buffer));
-    basic_web_server->websocket_connections.insert(client_fd);
-  } else if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){ //get callback
-    char *path = strtok_r(nullptr, " ", &saveptr);
-    std::string processed_path = std::string(&path[1], strlen(path)-1);
-    processed_path = processed_path == "" ? "public/index.html" : "public/"+processed_path;
+      std::vector<char> send_buffer(resp.size());
+      std::memcpy(&send_buffer[0], resp.c_str(), resp.size());
 
-    char *http_version = strtok_r(nullptr, " ", &saveptr);
-    
-    std::vector<char> send_buffer{};
-    
-    if((send_buffer = basic_web_server->read_file_web(processed_path, 200, accept_bytes)).size() != 0){
       tcp_server->write_socket(client_fd, std::move(send_buffer));
-    }else{
-      send_buffer = basic_web_server->read_file_web("public/404.html", 400);
-      tcp_server->write_socket(client_fd, std::move(send_buffer));
-    }
-  } else { //this bit should be just websocket frames
+      basic_web_server->websocket_connections.insert(client_fd);
+    } else if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){ //get callback
+      char *path = strtok_r(nullptr, " ", &saveptr);
+      std::string processed_path = std::string(&path[1], strlen(path)-1);
+      processed_path = processed_path == "" ? "public/index.html" : "public/"+processed_path;
 
-    ulong packet_length = buffer[1] & 0x7f;
-    if(packet_length == 126){
-      packet_length = ntohs(*((u_short*)&((uchar*)buffer)[2])) + 2; //the 2 bytes extra needed to store the length are added
-    }else if(packet_length == 127){
-      packet_length = be64toh(*((u_long*)&((uchar*)buffer)[2])) + 8; //the 8 bytes extra needed to store the length are added, be64toh used because ntohl is 32 bit
-    }
-    packet_length += 6; // +6 bytes for the header data
-
-    //figure out why the incorrect length for the packet is being read
-
-    std::cout << "length: " << be64toh(*((u_long*)&((uchar*)buffer)[2])) << std::endl;
-
-    for(int i = 0; i < 10; i++){
-      printf("%d ", ((uchar*)buffer)[i]);
-    }
-    std::cout << "\n\n";
+      char *http_version = strtok_r(nullptr, " ", &saveptr);
+      
+      std::vector<char> send_buffer{};
+      
+      if((send_buffer = basic_web_server->read_file_web(processed_path, 200, accept_bytes)).size() != 0){
+        tcp_server->write_socket(client_fd, std::move(send_buffer));
+      }else{
+        send_buffer = basic_web_server->read_file_web("public/404.html", 400);
+        tcp_server->write_socket(client_fd, std::move(send_buffer));
+      }
+    } 
+  } else if(basic_web_server->websocket_connections.count(client_fd)) { //this bit should be just websocket frames
 
     std::vector<uchar> frame{};
+
+    auto packet_length = get_ws_frame_length(buffer);
+
+    std::cout << "packet length: " << packet_length << "\n";
 
     if(basic_web_server->receiving_data.count(client_fd)){ //if there is already some pending data
       auto *pending_item = &basic_web_server->receiving_data[client_fd];
 
+      if(pending_item->length == -1){
+        if(pending_item->buffer.size() > 10){
+          pending_item->length = get_ws_frame_length((const char*)&pending_item->buffer[0]);
+        }else{ //assuming the received buffer and the pending buffer are at least 10 bytes long
+          std::vector<char> temp_buffer(10); //we only need first 10 bytes for length
+          temp_buffer.insert(temp_buffer.begin(), pending_item->buffer.begin(), pending_item->buffer.end());
+          temp_buffer.insert(temp_buffer.begin(), buffer, buffer + ( 10 - pending_item->buffer.size() ));
+          pending_item->length = get_ws_frame_length(&temp_buffer[0]);
+        }
+      }
+
       if(length + pending_item->buffer.size() == pending_item->length){
-        auto *recvd_info = &basic_web_server->receiving_data[client_fd];
-        recvd_info->buffer.insert(recvd_info->buffer.end(), buffer, buffer + length);
-        frame = std::move(recvd_info->buffer);
+        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
+        frame = std::move(pending_item->buffer);
         basic_web_server->receiving_data.erase(client_fd);
 
       }else if(length + pending_item->buffer.size() < pending_item->length){ //too little data
@@ -129,16 +149,22 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 
       }else{ //too much data
         long required_length = pending_item->length - pending_item->buffer.size();
-        //required_length = required_length > length ? length : required_length;
         std::cout << pending_item->length << " " << required_length << " " << length << "\n";
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
-        //remove_first_n_elements(buffer, , required_length);
+        frame = std::move(pending_item->buffer);
+        char *remaining_data = nullptr;
+        remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
+
+        pending_item->buffer.clear();
+        pending_item->buffer.insert(pending_item->buffer.end(), remaining_data, remaining_data + (length - required_length)); //insert the remaining data
+        pending_item->length = -1;
       }
 
-    }else if(length == packet_length){ //is exactly how much was needed
+    }else if((ulong)length == packet_length){ //is exactly how much was needed
       frame.insert(frame.begin(), buffer, buffer + length);
       
     }else{ //if there is no pending data, make this pending
+      std::cout << "packet length inserted pending: " << packet_length << " " << length << "\n";
       auto *pending_item = &basic_web_server->receiving_data[client_fd];
       pending_item->length = packet_length;
       pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
@@ -148,7 +174,9 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     
     if(frame.size()){
       auto processed_data = decode_websocket_frame(frame);
+      std::cout << "frame fini\n";
 
+      //for now finishes and prints last 200 bytes
       if(processed_data.first == -3){ // -3 is to indicate that it's done
         if(basic_web_server->websocket_frames.count(client_fd)){
           auto *vec_member = &basic_web_server->websocket_frames[client_fd];
@@ -158,7 +186,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
           basic_web_server->websocket_frames.erase(client_fd);
         }else{
           std::cout << std::string((char*)&processed_data.second[processed_data.second.size() - 200], 200) << "\n";
-          std::cout << "finished multi frame receive: " << processed_data.second.size() << "\n";
+          std::cout << "finished single frame receive: " << processed_data.second.size() << "\n";
           //std::cout << std::string((char*)&processed_data.second[0], processed_data.second.size()) << "\n";
         }
       }else if(processed_data.first == -2){

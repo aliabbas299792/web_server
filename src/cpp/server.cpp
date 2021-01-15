@@ -225,7 +225,6 @@ void server::serverLoop(){
       case event_type::READ: {
         if(cqe->res > 0)
           if(r_cb != nullptr) r_cb(req->client_socket, req->buffer, cqe->res, this, custom_obj);
-        req->buffer = nullptr; //done with the request buffer
         break;
       }
       case event_type::WRITE: {
@@ -305,6 +304,7 @@ void server::serverLoop(){
           }
           std::vector<char> buffer(to_read_amount);
           int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], to_read_amount);
+          std::cout << "amount read: " << amount_read << "\n";
           if(amount_read > 0){ //a non-zero amount read implies that reading has finished
             if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], amount_read, this, custom_obj);
             recv_data.erase(req->client_socket);
