@@ -28,12 +28,49 @@ ulong get_ws_frame_length(const char *buffer){
   return packet_length + 6; // +6 bytes for the header data
 }
 
+std::vector<uchar> make_ws_frame(std::string packet_msg, uchar opcode){
+  //gets the correct offsets and sizes
+  int offset = 2; //first 2 bytes for the header data (excluding the extended length bit)
+  uchar payload_len_char = 0;
+  ushort payload_len_short = 0;
+  ulong payload_len_long = 0;
+  const auto msg_size = packet_msg.size();
+  if(msg_size < 126){ //less than 126 bytes long
+    payload_len_char = msg_size;
+  }else if(msg_size < 65536){ //less than 2^16 bytes long
+    offset += 2;
+    payload_len_short = htons(msg_size);
+  }else{ //more than 2^16 bytes long
+    offset += 8;
+    payload_len_long = htobe64(msg_size);
+  }
+  
+  std::vector<uchar> data(offset + msg_size);
+  data[0] = 129; //not gonna do fragmentation, so set the fin bit, and the opcode
+  //don't mask frames being sent to the client
+
+  //sets the correct payload length
+  if(payload_len_char)
+    data[1] = payload_len_char;
+  else if(payload_len_short){
+    data[1] = 126;
+    *((ushort*)&data[2]) = payload_len_short;
+  }else{
+    data[1] = 127;
+    *((ulong*)&data[2]) = payload_len_long;
+  }
+  
+  std::memcpy(&data[offset], packet_msg.c_str(), msg_size);
+
+  return data;
+}
+
 std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data){
   const uint fin = (data[0] & 0x80) == 0x80;
   const uint opcode = data[0] & 0xf;
   const uint mask = (data[1] & 0x80) == 0x80;
 
-  if(!mask) return {-1, {}};
+  if(!mask) return {-1, {}}; //mask must be set
 
   int offset = 0;
 
@@ -53,9 +90,9 @@ std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> dat
     decoded.push_back(data[i] ^ masking_key[(i - (6 + offset)) % 4]);
   }
 
-  if(!fin) return {-2, decoded};
+  if(!fin) return {-2, decoded}; //fin bit not set, so put this in a pending larger buffer of decoded data
   
-  return {-3, decoded};
+  return {1, decoded}; //succesfully decoded, and is the final frame
 }
 
 bool is_valid_http_req(const char* buff, int length){
@@ -118,7 +155,6 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       }
     } 
   } else if(basic_web_server->websocket_connections.count(client_fd)) { //this bit should be just websocket frames
-
     std::vector<uchar> frame{};
 
     auto packet_length = get_ws_frame_length(buffer);
@@ -167,21 +203,21 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     }
 
     //by this point the frame has definitely been fully received
+
+    std::vector<uchar> frame_contents{};
     
     if(frame.size()){
       auto processed_data = decode_websocket_frame(frame);
 
       //for now finishes and prints last 200 bytes
-      if(processed_data.first == -3){ // -3 is to indicate that it's done
+      if(processed_data.first == 1){ // 1 is to indicate that it's done
         if(basic_web_server->websocket_frames.count(client_fd)){
           auto *vec_member = &basic_web_server->websocket_frames[client_fd];
           vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
-          std::cout << std::string((char*)&(*vec_member)[vec_member->size() - 100], 100) << "\n";
-          std::cout << "finished multi frame receive: " << vec_member->size() << "\n";
+          frame_contents = std::move(*vec_member);
           basic_web_server->websocket_frames.erase(client_fd);
         }else{
-          std::cout << std::string((char*)&processed_data.second[processed_data.second.size() - 100], 100) << "\n";
-          std::cout << "finished single frame receive: " << processed_data.second.size() << "\n";
+          frame_contents = std::move(processed_data.second);
         }
       }else if(processed_data.first == -2){
         auto *vec_member = &basic_web_server->websocket_frames[client_fd];
@@ -189,35 +225,22 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       }
     }
 
-    /*if(processed_data.first != -3){
-      auto *vec_member = &basic_web_server->receiving_data[client_fd];
-      vec_member->insert(vec_member->end(), std::make_move_iterator(processed_data.second.begin()), std::make_move_iterator(processed_data.second.end()) );
+    if(frame_contents.size() > 0){
+      std::cout << "Received a message of size: " << frame_contents.size() << "\n";
+
+      auto data = make_ws_frame("Hello from the server!", 1);
+      std::vector<char> send_buff{};
+      send_buff.insert(send_buff.begin(), data.begin(), data.end());
+      
+      tcp_server->write_socket(client_fd, std::move(send_buff));
     }
 
-    if(processed_data.first == -2){
-      //fatal_error("Mask bit not sent for socket...");
-    }else if(processed_data.first == -1 || processed_data.first == -3){
-      auto *vec_member = &basic_web_server->data_store[client_fd];
-      vec_member->insert(vec_member->end(), std::make_move_iterator(processed_data.second.begin()), std::make_move_iterator(processed_data.second.end()) );
-    }else{
-      //basically make it receive the entire message and add it to a queue if it's not final etc etc
-    }
-    
-    std::cout << "first: " << processed_data.first << "\n";
-    std::cout << "length: " << buff_vec.size() << "\n\n\n";
-    if(processed_data.first == -3){
-      //std::cout << std::string((char*)(&processed_data.second[0]), processed_data.second.size()) << "\n";
-      basic_web_server->data_store.erase(client_fd);
-    }
-
-    */
-    tcp_server->read_socket(client_fd);
+    tcp_server->read_socket(client_fd); //since it's a websocket, add another read request right after
   }
 }
 
 void w_cb(int client_fd, server *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
-  // std::cout << "write_socket callback\n";
   if(basic_web_server->websocket_connections.count(client_fd))
     tcp_server->read_socket(client_fd);
   else
