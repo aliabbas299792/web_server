@@ -208,8 +208,6 @@ void server::serverLoop(){
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
     
-    // std::cout << "an event occurred...\n";
-    
     switch(req->event){
       case event_type::ACCEPT: {
         add_accept_req(listener_fd, &client_address, &client_address_length);
@@ -294,7 +292,7 @@ void server::serverLoop(){
       }
       case event_type::READ_SSL: { //used for reading over TLS
         if(cqe->res > 0 && socket_to_ssl.count(req->client_socket)){
-          int to_read_amount = READ_SIZE; //the default read size
+          int to_read_amount = cqe->res; //the default read size
           if(recv_data.count(req->client_socket)){ //will correctly deal with needing to call wolfSSL_read multiple times
             auto *vec_member = &recv_data[req->client_socket];
             vec_member->insert(vec_member->end(), req->buffer, req->buffer + cqe->res);
@@ -302,12 +300,22 @@ void server::serverLoop(){
           }else{
             recv_data[req->client_socket] = std::vector<char>(req->buffer, req->buffer + cqe->res);
           }
+
           std::vector<char> buffer(to_read_amount);
-          int amount_read = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[0], to_read_amount);
-          std::cout << "amount read: " << amount_read << "\n";
-          if(amount_read > 0){ //a non-zero amount read implies that reading has finished
-            if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], amount_read, this, custom_obj);
-            recv_data.erase(req->client_socket);
+          int total_read = 0;
+
+          while(recv_data[req->client_socket].size()){
+            int this_time = wolfSSL_read(socket_to_ssl[req->client_socket], &buffer[total_read], to_read_amount - total_read);
+            if(this_time <= 0) break;
+            total_read += this_time;
+          }
+
+          if(total_read == 0) add_read_req(req->client_socket); //total_read of 0 implies that data must be read into the recv_data buffer
+          
+          if(total_read > 0){
+           if(r_cb != nullptr) r_cb(req->client_socket, &buffer[0], total_read, this, custom_obj);
+            if(!recv_data[req->client_socket].size())
+              recv_data.erase(req->client_socket);
           }
         }else{
           close_socket(req->client_socket);

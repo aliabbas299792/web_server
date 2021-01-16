@@ -37,11 +37,9 @@ int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, serve
     std::memcpy(buff, &(*data)[0], sz);
     remove_first_n_elements(*data, sz);
     return sz;
-  }else if(recvd_amount < sz){ //in the off chance that there isn't enough data available for the full request (too little)
+  }else if(recvd_amount < sz){ //if there isn't enough data available for the full request (too little)
     if(accept)
       tcp_server->add_read_req(client_socket, true);
-    else
-      tcp_server->add_read_req(client_socket, false);
     return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
   }else{ //just right
     std::memcpy(buff, &(*data)[0], sz); //since this is exactly how much we need, copy the data into the buffer
@@ -61,6 +59,7 @@ int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
     if(recv_data->count(client_socket)){ //if an entry exists in the map, use the data in it, otherwise make a request for it
       return tls_recv_helper(recv_data, tcp_server, buff, sz, client_socket, true);
     }else{
+      // std::cout << "what a surprise 2....\n";
       tcp_server->add_read_req(client_socket, true);
       return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
     } 

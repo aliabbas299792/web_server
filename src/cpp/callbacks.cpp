@@ -123,8 +123,6 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 
     auto packet_length = get_ws_frame_length(buffer);
 
-    std::cout << "packet length: " << packet_length << "\n";
-
     if(basic_web_server->receiving_data.count(client_fd)){ //if there is already some pending data
       auto *pending_item = &basic_web_server->receiving_data[client_fd];
 
@@ -149,7 +147,6 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
 
       }else{ //too much data
         long required_length = pending_item->length - pending_item->buffer.size();
-        std::cout << pending_item->length << " " << required_length << " " << length << "\n";
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
         frame = std::move(pending_item->buffer);
         char *remaining_data = nullptr;
@@ -164,7 +161,6 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       frame.insert(frame.begin(), buffer, buffer + length);
       
     }else{ //if there is no pending data, make this pending
-      std::cout << "packet length inserted pending: " << packet_length << " " << length << "\n";
       auto *pending_item = &basic_web_server->receiving_data[client_fd];
       pending_item->length = packet_length;
       pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
@@ -174,20 +170,18 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     
     if(frame.size()){
       auto processed_data = decode_websocket_frame(frame);
-      std::cout << "frame fini\n";
 
       //for now finishes and prints last 200 bytes
       if(processed_data.first == -3){ // -3 is to indicate that it's done
         if(basic_web_server->websocket_frames.count(client_fd)){
           auto *vec_member = &basic_web_server->websocket_frames[client_fd];
           vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
-          std::cout << std::string((char*)&(*vec_member)[vec_member->size() - 200], 200) << "\n";
+          std::cout << std::string((char*)&(*vec_member)[vec_member->size() - 100], 100) << "\n";
           std::cout << "finished multi frame receive: " << vec_member->size() << "\n";
           basic_web_server->websocket_frames.erase(client_fd);
         }else{
-          std::cout << std::string((char*)&processed_data.second[processed_data.second.size() - 200], 200) << "\n";
+          std::cout << std::string((char*)&processed_data.second[processed_data.second.size() - 100], 100) << "\n";
           std::cout << "finished single frame receive: " << processed_data.second.size() << "\n";
-          //std::cout << std::string((char*)&processed_data.second[0], processed_data.second.size()) << "\n";
         }
       }else if(processed_data.first == -2){
         auto *vec_member = &basic_web_server->websocket_frames[client_fd];
@@ -217,8 +211,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     }
 
     */
-    if(basic_web_server->websocket_connections.count(client_fd))
-      tcp_server->read_socket(client_fd);
+    tcp_server->read_socket(client_fd);
   }
 }
 
