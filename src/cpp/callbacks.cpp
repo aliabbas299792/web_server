@@ -4,8 +4,8 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
-void a_cb(int client_fd, server *tcp_server, void *custom_obj){ //the accept callback
-  // std::cout << "Accepted new connection: " << client_fd << "\n";
+void a_cb(int client_socket, server *tcp_server, void *custom_obj){ //the accept callback
+  // std::cout << "Accepted new connection: " << client_socket << "\n";
 }
 
 std::string get_accept_header_value(std::string input) {
@@ -28,7 +28,7 @@ ulong get_ws_frame_length(const char *buffer){
   return packet_length + 6; // +6 bytes for the header data
 }
 
-std::vector<uchar> make_ws_frame(std::string packet_msg, uchar opcode){
+std::vector<char> make_ws_frame(std::string packet_msg, uchar opcode){
   //gets the correct offsets and sizes
   int offset = 2; //first 2 bytes for the header data (excluding the extended length bit)
   uchar payload_len_char = 0;
@@ -45,7 +45,7 @@ std::vector<uchar> make_ws_frame(std::string packet_msg, uchar opcode){
     payload_len_long = htobe64(msg_size);
   }
   
-  std::vector<uchar> data(offset + msg_size);
+  std::vector<char> data(offset + msg_size);
   data[0] = 129; //not gonna do fragmentation, so set the fin bit, and the opcode
   //don't mask frames being sent to the client
 
@@ -65,12 +65,25 @@ std::vector<uchar> make_ws_frame(std::string packet_msg, uchar opcode){
   return data;
 }
 
+bool close_ws_connection(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server, bool client_already_closed = false){
+  basic_web_server->websocket_connections.erase(client_socket);
+  basic_web_server->websocket_frames.erase(client_socket);
+  if(!client_already_closed) {
+    auto data = make_ws_frame("", 0x8); //the close opcode
+    tcp_or_tls_server->write_socket(client_socket, std::move(data));
+  }
+  tcp_or_tls_server->close_socket(client_socket);
+  return true;
+}
+
 std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data){
   const uint fin = (data[0] & 0x80) == 0x80;
   const uint opcode = data[0] & 0xf;
   const uint mask = (data[1] & 0x80) == 0x80;
 
   if(!mask) return {-1, {}}; //mask must be set
+  if(opcode == 0x8) return {-3, {}}; //the close opcode
+  if(opcode == 0xA) return {3, {}}; //the pong opcode
 
   int offset = 0;
 
@@ -90,6 +103,7 @@ std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> dat
     decoded.push_back(data[i] ^ masking_key[(i - (6 + offset)) % 4]);
   }
 
+  if(opcode == 0x9) return {2, decoded}; //the ping opcode
   if(!fin) return {-2, decoded}; //fin bit not set, so put this in a pending larger buffer of decoded data
   
   return {1, decoded}; //succesfully decoded, and is the final frame
@@ -105,7 +119,7 @@ bool is_valid_http_req(const char* buff, int length){
   return valid;
 }
 
-void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, void *custom_obj){
+void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
 
   if(is_valid_http_req(buffer, length)){ //if not a valid HTTP req, then probably a websocket frame
@@ -136,8 +150,8 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       std::vector<char> send_buffer(resp.size());
       std::memcpy(&send_buffer[0], resp.c_str(), resp.size());
 
-      tcp_server->write_socket(client_fd, std::move(send_buffer));
-      basic_web_server->websocket_connections.insert(client_fd);
+      tcp_or_tls_server->write_socket(client_socket, std::move(send_buffer));
+      basic_web_server->websocket_connections.insert(client_socket);
     } else if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){ //get callback
       char *path = strtok_r(nullptr, " ", &saveptr);
       std::string processed_path = std::string(&path[1], strlen(path)-1);
@@ -148,19 +162,19 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       std::vector<char> send_buffer{};
       
       if((send_buffer = basic_web_server->read_file_web(processed_path, 200, accept_bytes)).size() != 0){
-        tcp_server->write_socket(client_fd, std::move(send_buffer));
+        tcp_or_tls_server->write_socket(client_socket, std::move(send_buffer));
       }else{
         send_buffer = basic_web_server->read_file_web("public/404.html", 400);
-        tcp_server->write_socket(client_fd, std::move(send_buffer));
+        tcp_or_tls_server->write_socket(client_socket, std::move(send_buffer));
       }
     } 
-  } else if(basic_web_server->websocket_connections.count(client_fd)) { //this bit should be just websocket frames
+  } else if(basic_web_server->websocket_connections.count(client_socket)) { //this bit should be just websocket frames
     std::vector<uchar> frame{};
 
     auto packet_length = get_ws_frame_length(buffer);
 
-    if(basic_web_server->receiving_data.count(client_fd)){ //if there is already some pending data
-      auto *pending_item = &basic_web_server->receiving_data[client_fd];
+    if(basic_web_server->receiving_data.count(client_socket)){ //if there is already some pending data
+      auto *pending_item = &basic_web_server->receiving_data[client_socket];
 
       if(pending_item->length == -1){
         if(pending_item->buffer.size() > 10){
@@ -176,7 +190,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       if(length + pending_item->buffer.size() == pending_item->length){
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
         frame = std::move(pending_item->buffer);
-        basic_web_server->receiving_data.erase(client_fd);
+        basic_web_server->receiving_data.erase(client_socket);
 
       }else if(length + pending_item->buffer.size() < pending_item->length){ //too little data
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
@@ -197,7 +211,7 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
       frame.insert(frame.begin(), buffer, buffer + length);
       
     }else{ //if there is no pending data, make this pending
-      auto *pending_item = &basic_web_server->receiving_data[client_fd];
+      auto *pending_item = &basic_web_server->receiving_data[client_socket];
       pending_item->length = packet_length;
       pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
     }
@@ -205,44 +219,53 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server *tcp_server, 
     //by this point the frame has definitely been fully received
 
     std::vector<uchar> frame_contents{};
+    bool closed = false;
     
     if(frame.size()){
       auto processed_data = decode_websocket_frame(frame);
 
       //for now finishes and prints last 200 bytes
       if(processed_data.first == 1){ // 1 is to indicate that it's done
-        if(basic_web_server->websocket_frames.count(client_fd)){
-          auto *vec_member = &basic_web_server->websocket_frames[client_fd];
+        if(basic_web_server->websocket_frames.count(client_socket)){
+          auto *vec_member = &basic_web_server->websocket_frames[client_socket];
           vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
           frame_contents = std::move(*vec_member);
-          basic_web_server->websocket_frames.erase(client_fd);
+          basic_web_server->websocket_frames.erase(client_socket);
         }else{
           frame_contents = std::move(processed_data.second);
         }
       }else if(processed_data.first == -2){
-        auto *vec_member = &basic_web_server->websocket_frames[client_fd];
+        auto *vec_member = &basic_web_server->websocket_frames[client_socket];
         vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
+      }else if(processed_data.first == -3){ //close opcode
+        closed = close_ws_connection(client_socket, tcp_or_tls_server, basic_web_server, true);
+      }else if(processed_data.first == 2){ //ping opcode
+        std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
+        auto data = make_ws_frame(body_data, 0xA);
+        tcp_or_tls_server->write_socket(client_socket, std::move(data));
       }
     }
 
     if(frame_contents.size() > 0){
+      //this is where you'd deal with websocket connections
       std::cout << "Received a message of size: " << frame_contents.size() << "\n";
+      std::cout << std::string((const char*)&frame_contents[0], frame_contents.size()) << "\n";
 
       auto data = make_ws_frame("Hello from the server!", 1);
-      std::vector<char> send_buff{};
-      send_buff.insert(send_buff.begin(), data.begin(), data.end());
+      tcp_or_tls_server->write_socket(client_socket, std::move(data));
       
-      tcp_server->write_socket(client_fd, std::move(send_buff));
+      closed = close_ws_connection(client_socket, tcp_or_tls_server, basic_web_server);
     }
 
-    tcp_server->read_socket(client_fd); //since it's a websocket, add another read request right after
+    if(!closed)
+      tcp_or_tls_server->read_socket(client_socket); //since it's a websocket, add another read request right after
   }
 }
 
-void w_cb(int client_fd, server *tcp_server, void *custom_obj){
+void w_cb(int client_socket, server *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
-  if(basic_web_server->websocket_connections.count(client_fd))
-    tcp_server->read_socket(client_fd);
+  if(basic_web_server->websocket_connections.count(client_socket))
+    tcp_or_tls_server->read_socket(client_socket);
   else
-    tcp_server->close_socket(client_fd); //for web requests you close the socket right after
+    tcp_or_tls_server->close_socket(client_socket); //for web requests you close the socket right after
 }
