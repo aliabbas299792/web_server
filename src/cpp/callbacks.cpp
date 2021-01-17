@@ -77,7 +77,6 @@ bool close_ws_connection_req(int client_socket, server *tcp_or_tls_server, web_s
 }
 
 bool close_ws_connection_confirm(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server){
-  std::cout << "Close thing: " << basic_web_server->close_pending_ops_map[client_socket] << "\n";
   if(!(basic_web_server->close_pending_ops_map[client_socket] - 1)){
     basic_web_server->close_pending_ops_map.erase(client_socket);
     tcp_or_tls_server->close_socket(client_socket);
@@ -180,7 +179,7 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
       }
     } 
   } else if(basic_web_server->websocket_connections.count(client_socket)) { //this bit should be just websocket frames
-    std::vector<uchar> frame{};
+    std::vector<std::vector<uchar>> frames{};
 
     auto packet_length = get_ws_frame_length(buffer);
 
@@ -198,9 +197,11 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
         }
       }
 
+      // std::cout << "pending: " << pending_item->buffer.size() << " ## wanted length: " << pending_item->length << " ## got length: " << length << std::endl;
+
       if(length + pending_item->buffer.size() == pending_item->length){
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
-        frame = std::move(pending_item->buffer);
+        frames.push_back(std::move(pending_item->buffer));
         basic_web_server->receiving_data.erase(client_socket);
 
       }else if(length + pending_item->buffer.size() < pending_item->length){ //too little data
@@ -209,17 +210,26 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
       }else{ //too much data
         long required_length = pending_item->length - pending_item->buffer.size();
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
-        frame = std::move(pending_item->buffer);
+        frames.push_back(std::move(pending_item->buffer));
         char *remaining_data = nullptr;
         remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
 
         pending_item->buffer.clear();
         pending_item->buffer.insert(pending_item->buffer.end(), remaining_data, remaining_data + (length - required_length)); //insert the remaining data
-        pending_item->length = -1;
+        if(length - required_length < 10){ //probably not a full frame if less than 10 bytes
+          pending_item->length = -1;
+        }else{
+          pending_item->length = get_ws_frame_length((const char*)&pending_item->buffer[0]);
+          if(pending_item->length == pending_item->buffer.size()){
+            frames.push_back(std::move(pending_item->buffer));
+          }else if(pending_item->length < pending_item->buffer.size()){
+            std::cout << "The case for more than 2 frames in one message hasn't been dealt with yet... (will probably crash the program)\n";
+          }
+        }
       }
 
-    }else if((ulong)length == packet_length){ //is exactly how much was needed
-      frame.insert(frame.begin(), buffer, buffer + length);
+    }else if(length >= packet_length){ //is exactly how much was needed
+      frames.push_back(std::vector<uchar>(buffer, buffer + length));
       
     }else{ //if there is no pending data, make this pending
       auto *pending_item = &basic_web_server->receiving_data[client_socket];
@@ -232,44 +242,55 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
     std::vector<uchar> frame_contents{};
     bool closed = false;
     
-    if(frame.size()){
-      auto processed_data = decode_websocket_frame(frame);
+    for(const auto &frame : frames){
+      if(frame.size()){
+        auto processed_data = decode_websocket_frame(frame);
+        std::cout << "got a frame of size: " << processed_data.second.size() << " ## opcode: " << processed_data.first << "\n";
 
-      //for now finishes and prints last 200 bytes
-      if(processed_data.first == 1){ // 1 is to indicate that it's done
-        if(basic_web_server->websocket_frames.count(client_socket)){
+        //for now finishes and prints last 200 bytes
+        if(processed_data.first == 1){ // 1 is to indicate that it's done
+          if(basic_web_server->websocket_frames.count(client_socket)){
+            auto *vec_member = &basic_web_server->websocket_frames[client_socket];
+            vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
+            frame_contents = std::move(*vec_member);
+            basic_web_server->websocket_frames.erase(client_socket);
+          }else{
+            frame_contents = std::move(processed_data.second);
+          }
+        }else if(processed_data.first == -2){
           auto *vec_member = &basic_web_server->websocket_frames[client_socket];
-          vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
-          frame_contents = std::move(*vec_member);
-          basic_web_server->websocket_frames.erase(client_socket);
-        }else{
-          frame_contents = std::move(processed_data.second);
+          vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
+        }else if(processed_data.first == -3){ //close opcode
+          basic_web_server->close_pending_ops_map[client_socket]++;
+          //we're going to close immediately after, so make sure the program knows there is this write op happening
+          closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server, true);
+        }else if(processed_data.first == 2){ //ping opcode
+          std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
+          auto data = make_ws_frame(body_data, 0xA);
+          tcp_or_tls_server->write_socket(client_socket, std::move(data));
         }
-      }else if(processed_data.first == -2){
-        auto *vec_member = &basic_web_server->websocket_frames[client_socket];
-        vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
-      }else if(processed_data.first == -3){ //close opcode
+      }
+
+      if(frame_contents.size() > 0){
+        //this is where you'd deal with websocket connections
+        std::cout << "Received a message of size: " << frame_contents.size() << "\n";
+
+        std::string str = "";
+        for(int i = 0; i < 1024*1024*17; i++){
+          str += "A";
+        }
+        str += "... hello world...";
+
+        auto data = make_ws_frame(str, 1); //echos back whatever you send
+        tcp_or_tls_server->write_socket(client_socket, std::move(data));
+        
         basic_web_server->close_pending_ops_map[client_socket]++;
         //we're going to close immediately after, so make sure the program knows there is this write op happening
-        closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server, true);
-      }else if(processed_data.first == 2){ //ping opcode
-        std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
-        auto data = make_ws_frame(body_data, 0xA);
-        tcp_or_tls_server->write_socket(client_socket, std::move(data));
+        closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
       }
-    }
 
-    if(frame_contents.size() > 0){
-      //this is where you'd deal with websocket connections
-      std::cout << "Received a message of size: " << frame_contents.size() << "\n";
-      // std::cout << std::string((const char*)&frame_contents[0], frame_contents.size()) << "\n";
-
-      auto data = make_ws_frame(std::string((const char*)&frame_contents[0], frame_contents.size()), 1);
-      tcp_or_tls_server->write_socket(client_socket, std::move(data));
-      
-      basic_web_server->close_pending_ops_map[client_socket]++;
-      //we're going to close immediately after, so make sure the program knows there is this write op happening
-      closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
+      if(closed)
+        break;
     }
 
     if(!closed)

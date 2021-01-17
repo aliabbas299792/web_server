@@ -19,3 +19,4 @@ Explain bits:
 
 TODO:
  - For websocket, use the autobahn test suite at some point when you want to make it more conforming, very handy to test the web server
+ - Refactor the entire websockets bit, make it work for any number of frames in a messsage (including bits of frames)

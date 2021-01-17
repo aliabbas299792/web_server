@@ -79,6 +79,7 @@ class server{
     int add_read_req(int client_socket, bool accept = false); //adds a read request to the io_uring ring
     int add_write_req(int client_socket, char *buffer, unsigned int length, bool accept = false); //adds a write request using the provided request structure
 
+    std::unordered_map<int, std::queue<write_data>> send_data{}; //will store data that is queued to be written by wolfSSL_write or by normal tcp write
     //TLS only variables and functions below
     //make the below 2 functions friends, so that they can access private data
     friend int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
@@ -90,11 +91,10 @@ class server{
     bool is_tls = false;
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr; //the wolfssl context to use here
-    std::unordered_map<int, std::vector<char>> recv_data; //will store temporary data needed to negotiate a TLS connection
-    std::unordered_map<int, int> accept_send_data; //will store temporary data needed to negotiate a TLS connection
-    std::unordered_map<int, std::queue<write_data>> send_data; //will store data that is queued to be written by wolfSSL_write
-    std::unordered_map<int, WOLFSSL*> socket_to_ssl; //maps a socket fd to an SSL object
-    std::unordered_set<int> active_connections; //the fd's of active connections
+    std::unordered_map<int, std::vector<char>> recv_data{}; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, int> accept_send_data{}; //will store temporary data needed to negotiate a TLS connection
+    std::unordered_map<int, WOLFSSL*> socket_to_ssl{}; //maps a socket fd to an SSL object
+    std::unordered_set<int> active_connections{}; //the fd's of active connections
   public:
     //accept callbacks for ACCEPT, READ and WRITE
     server(int listen_port, accept_callback a_cb = nullptr, read_callback r_cb = nullptr, write_callback w_cb = nullptr, void *custom_obj = nullptr);
