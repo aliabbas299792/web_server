@@ -23,6 +23,7 @@ public:
   std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
   std::unordered_map<int, receiving_data_info> receiving_data; //for client socket to data
   std::unordered_map<int, std::vector<uchar>> websocket_frames; //for client socket to websocket frames concatenated
+  std::unordered_map<int, int> close_pending_ops_map; //maps client sockets which are being closed, to the number of write operations currently happening
   
   std::unordered_set<int> websocket_connections;
 };

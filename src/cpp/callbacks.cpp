@@ -65,14 +65,25 @@ std::vector<char> make_ws_frame(std::string packet_msg, uchar opcode){
   return data;
 }
 
-bool close_ws_connection(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server, bool client_already_closed = false){
+bool close_ws_connection_req(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server, bool client_already_closed = false){
+  basic_web_server->close_pending_ops_map[client_socket]++;
   basic_web_server->websocket_connections.erase(client_socket);
   basic_web_server->websocket_frames.erase(client_socket);
   if(!client_already_closed) {
     auto data = make_ws_frame("", 0x8); //the close opcode
     tcp_or_tls_server->write_socket(client_socket, std::move(data));
   }
-  tcp_or_tls_server->close_socket(client_socket);
+  return true;
+}
+
+bool close_ws_connection_confirm(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server){
+  std::cout << "Close thing: " << basic_web_server->close_pending_ops_map[client_socket] << "\n";
+  if(!(basic_web_server->close_pending_ops_map[client_socket] - 1)){
+    basic_web_server->close_pending_ops_map.erase(client_socket);
+    tcp_or_tls_server->close_socket(client_socket);
+  }else{
+    basic_web_server->close_pending_ops_map[client_socket]--;
+  }
   return true;
 }
 
@@ -238,7 +249,9 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
         auto *vec_member = &basic_web_server->websocket_frames[client_socket];
         vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
       }else if(processed_data.first == -3){ //close opcode
-        closed = close_ws_connection(client_socket, tcp_or_tls_server, basic_web_server, true);
+        basic_web_server->close_pending_ops_map[client_socket]++;
+        //we're going to close immediately after, so make sure the program knows there is this write op happening
+        closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server, true);
       }else if(processed_data.first == 2){ //ping opcode
         std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
         auto data = make_ws_frame(body_data, 0xA);
@@ -249,12 +262,14 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
     if(frame_contents.size() > 0){
       //this is where you'd deal with websocket connections
       std::cout << "Received a message of size: " << frame_contents.size() << "\n";
-      std::cout << std::string((const char*)&frame_contents[0], frame_contents.size()) << "\n";
+      // std::cout << std::string((const char*)&frame_contents[0], frame_contents.size()) << "\n";
 
-      auto data = make_ws_frame("Hello from the server!", 1);
+      auto data = make_ws_frame(std::string((const char*)&frame_contents[0], frame_contents.size()), 1);
       tcp_or_tls_server->write_socket(client_socket, std::move(data));
       
-      closed = close_ws_connection(client_socket, tcp_or_tls_server, basic_web_server);
+      basic_web_server->close_pending_ops_map[client_socket]++;
+      //we're going to close immediately after, so make sure the program knows there is this write op happening
+      closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
     }
 
     if(!closed)
@@ -264,8 +279,12 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
 
 void w_cb(int client_socket, server *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
-  if(basic_web_server->websocket_connections.count(client_socket))
-    tcp_or_tls_server->read_socket(client_socket);
-  else
-    tcp_or_tls_server->close_socket(client_socket); //for web requests you close the socket right after
+  if(basic_web_server->close_pending_ops_map.count(client_socket)){
+    close_ws_connection_confirm(client_socket, tcp_or_tls_server, basic_web_server);
+  }else{
+    if(basic_web_server->websocket_connections.count(client_socket))
+      tcp_or_tls_server->read_socket(client_socket);
+    else
+      tcp_or_tls_server->close_socket(client_socket); //for web requests you close the socket right after
+  }
 }
