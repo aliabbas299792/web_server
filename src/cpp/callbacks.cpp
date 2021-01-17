@@ -46,7 +46,7 @@ std::vector<char> make_ws_frame(std::string packet_msg, uchar opcode){
   }
   
   std::vector<char> data(offset + msg_size);
-  data[0] = 129; //not gonna do fragmentation, so set the fin bit, and the opcode
+  data[0] = 128 | opcode; //not gonna do fragmentation, so set the fin bit, and the opcode
   //don't mask frames being sent to the client
 
   //sets the correct payload length
@@ -119,6 +119,82 @@ std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> dat
   return {1, decoded}; //succesfully decoded, and is the final frame
 }
 
+std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int client_socket, web_server *basic_web_server, server *tcp_or_tls_server){
+  std::vector<std::vector<uchar>> frames;
+
+  int remaining_length = length;
+
+  if(basic_web_server->receiving_data.count(client_socket)){ //if there is already pending data
+    auto *pending_item = &basic_web_server->receiving_data[client_socket];
+
+    if(pending_item->length == -1){ //assuming the received buffer and the pending buffer are at least 10 bytes long
+      if(pending_item->buffer.size() + length < 10){
+        // std::cout << "super small read...\n";
+        close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server); //doesn't deal with such small reads - just close the connection
+        return {-1, {}};
+      }else{
+        std::vector<char> temp_buffer(10); //we only need first 10 bytes for length
+        temp_buffer.insert(temp_buffer.begin(), pending_item->buffer.begin(), pending_item->buffer.end());
+        temp_buffer.insert(temp_buffer.begin(), buffer, buffer + ( 10 - pending_item->buffer.size() ));
+        pending_item->length = get_ws_frame_length(&temp_buffer[0]);
+      }
+    }
+    
+    const auto required_length = pending_item->length - pending_item->buffer.size();
+
+    if(required_length < length){ //more than enough data
+      remaining_length = length - required_length;
+      pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
+      frames.push_back(std::move(pending_item->buffer));
+
+      char *remaining_data = nullptr;
+      remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
+      buffer = remaining_data;
+      basic_web_server->receiving_data.erase(client_socket);
+    
+    }else if(required_length == length){ //just enough data
+      remaining_length = 0; //we've used up all of the data
+      pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
+      frames.push_back(std::move(pending_item->buffer));
+      basic_web_server->receiving_data.erase(client_socket);
+
+    }else{ //too little data
+      remaining_length = 0; //we've used up all of the data
+      pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
+    
+    }
+
+  }
+  
+  //by this point, the data in the buffer is guaranteed to start with a new frame
+  while(remaining_length > 10){ //you only loop while greater than 10 bytes, since under 10 bytes may not have enough data to get the length
+    auto packet_length = get_ws_frame_length(buffer);
+    
+    if(remaining_length >= packet_length){
+      frames.push_back(std::vector<uchar>(buffer, buffer + packet_length));
+      char *remaining_data = nullptr;
+      remove_first_n_elements(buffer, (int)remaining_length, remaining_data, (int)packet_length);
+      buffer = remaining_data;
+      remaining_length -= packet_length;
+    }else{
+      break;
+    }
+  }
+
+  //by this point only the beginnings of frames should be left, if the remaining_length is not 0
+  if(remaining_length > 0){
+    auto *pending_item = &basic_web_server->receiving_data[client_socket];
+    pending_item->buffer = std::vector<uchar>(buffer, buffer + remaining_length);
+    if(remaining_length > 10){
+      pending_item->length = get_ws_frame_length(buffer);
+    }else{
+      pending_item->length = -1;
+    }
+  }
+
+  return {1, frames};
+}
+
 bool is_valid_http_req(const char* buff, int length){
   if(length < 16) return false; //minimum size for valid HTTP request is 16 bytes
   const char *types[] = { "GET ", "POST ", "PUT ", "DELETE ", "PATCH " };
@@ -180,128 +256,68 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
     } 
   } else if(basic_web_server->websocket_connections.count(client_socket)) { //this bit should be just websocket frames
     std::vector<std::vector<uchar>> frames{};
-    std::vector<char> buffer_data(buffer, buffer + length);
-    bool closed = false;
+    auto frame_pair = get_ws_frames(buffer, length, client_socket, basic_web_server, tcp_or_tls_server);
 
-    int remaining_length = length;
+    if(frame_pair.first == 1){ //if frame_pair.first == -1, then we're trying to immediately close
+      frames = std::move(frame_pair.second);
+      //by this point the frame has definitely been fully received
 
-    if(basic_web_server->receiving_data.count(client_socket)){ //if there is already pending data
-      auto *pending_item = &basic_web_server->receiving_data[client_socket];
-
-      if(pending_item->length == -1){ //assuming the received buffer and the pending buffer are at least 10 bytes long
-        if(pending_item->buffer.size() + length < 10){
-          closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server); //doesn't deal with such small reads - just close the connection
-          std::cout << "super small read...\n";
-        }else{
-          std::vector<char> temp_buffer(10); //we only need first 10 bytes for length
-          temp_buffer.insert(temp_buffer.begin(), pending_item->buffer.begin(), pending_item->buffer.end());
-          temp_buffer.insert(temp_buffer.begin(), buffer, buffer + ( 10 - pending_item->buffer.size() ));
-          pending_item->length = get_ws_frame_length(&temp_buffer[0]);
-        }
-      }
+      std::vector<uchar> frame_contents{};
+      bool closed = false;
       
-      const auto required_length = pending_item->length - pending_item->buffer.size();
+      for(const auto &frame : frames){
+        if(frame.size()){
+          auto processed_data = decode_websocket_frame(frame);
 
-      if(required_length < length){ //more than enough data
-        remaining_length = length - required_length;
-        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
-        frames.push_back(std::move(pending_item->buffer));
-
-        char *remaining_data = nullptr;
-        remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
-        buffer = remaining_data;
-        basic_web_server->receiving_data.erase(client_socket);
-      
-      }else if(required_length == length){ //just enough data
-        remaining_length = 0; //we've used up all of the data
-        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
-        frames.push_back(std::move(pending_item->buffer));
-        basic_web_server->receiving_data.erase(client_socket);
-
-      }else{ //too little data
-        remaining_length = 0; //we've used up all of the data
-        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
-      
-      }
-    }
-    
-    //by this point, the data in the buffer is guaranteed to start with a new frame
-    while(remaining_length > 10){ //you only loop while greater than 10 bytes, since under 10 bytes may not have enough data to get the length
-      auto packet_length = get_ws_frame_length(buffer);
-      
-      if(remaining_length >= packet_length){
-        frames.push_back(std::vector<uchar>(buffer, buffer + packet_length));
-        char *remaining_data = nullptr;
-        remove_first_n_elements(buffer, (int)remaining_length, remaining_data, (int)packet_length);
-        buffer = remaining_data;
-        remaining_length -= packet_length;
-      }else{
-        break;
-      }
-    }
-
-    //by this point only the beginnings of frames should be left, if the remaining_length is not 0
-    if(remaining_length > 0){
-      auto *pending_item = &basic_web_server->receiving_data[client_socket];
-      pending_item->buffer = std::vector<uchar>(buffer, buffer + remaining_length);
-      if(remaining_length > 10){
-        pending_item->length = get_ws_frame_length(buffer);
-      }else{
-        pending_item->length = -1;
-      }
-    }
-
-    //by this point the frame has definitely been fully received
-
-    std::vector<uchar> frame_contents{};
-    
-    for(const auto &frame : frames){
-      if(frame.size()){
-        auto processed_data = decode_websocket_frame(frame);
-
-        frame_contents.clear();
-        //for now finishes and prints last 200 bytes
-        if(processed_data.first == 1){ // 1 is to indicate that it's done
-          if(basic_web_server->websocket_frames.count(client_socket)){
+          frame_contents.clear();
+          //for now finishes and prints last 200 bytes
+          if(processed_data.first == 1){ // 1 is to indicate that it's done
+            if(basic_web_server->websocket_frames.count(client_socket)){
+              auto *vec_member = &basic_web_server->websocket_frames[client_socket];
+              vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
+              frame_contents = std::move(*vec_member);
+              basic_web_server->websocket_frames.erase(client_socket);
+            }else{
+              frame_contents = std::move(processed_data.second);
+            }
+          }else if(processed_data.first == -2){
             auto *vec_member = &basic_web_server->websocket_frames[client_socket];
-            vec_member->insert(vec_member->end(), processed_data.second.begin(), processed_data.second.end());
-            frame_contents = std::move(*vec_member);
-            basic_web_server->websocket_frames.erase(client_socket);
-          }else{
-            frame_contents = std::move(processed_data.second);
+            vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
+          }else if(processed_data.first == -3){ //close opcode
+            basic_web_server->close_pending_ops_map[client_socket]++;
+            //we're going to close immediately after, so make sure the program knows there is this write op happening
+            closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server, true);
+          }else if(processed_data.first == 2){ //ping opcode
+            std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
+            auto data = make_ws_frame(body_data, 0xA);
+            tcp_or_tls_server->write_socket(client_socket, std::move(data));
           }
-        }else if(processed_data.first == -2){
-          auto *vec_member = &basic_web_server->websocket_frames[client_socket];
-          vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
-        }else if(processed_data.first == -3){ //close opcode
+        }
+
+        if(frame_contents.size() > 0){
+          //this is where you'd deal with websocket connections
+          std::cout << "Received a message of size: " << frame_contents.size() << "\n";
+
+          std::string str = "";
+          for(int i = 0; i < 1024*1024*5; i++){
+            str += "A";
+          }
+
+          auto data = make_ws_frame(str, 2); //echos back whatever you send
+          tcp_or_tls_server->write_socket(client_socket, std::move(data));
+          
           basic_web_server->close_pending_ops_map[client_socket]++;
           //we're going to close immediately after, so make sure the program knows there is this write op happening
-          closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server, true);
-        }else if(processed_data.first == 2){ //ping opcode
-          std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
-          auto data = make_ws_frame(body_data, 0xA);
-          tcp_or_tls_server->write_socket(client_socket, std::move(data));
+          // closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
         }
+
+        if(closed)
+          break;
       }
 
-      if(frame_contents.size() > 0){
-        //this is where you'd deal with websocket connections
-        std::cout << "Received a message of size: " << frame_contents.size() << "\n";
-
-        auto data = make_ws_frame(std::string((const char*)&frame_contents[0], frame_contents.size()), 1); //echos back whatever you send
-        tcp_or_tls_server->write_socket(client_socket, std::move(data));
-        
-        basic_web_server->close_pending_ops_map[client_socket]++;
-        //we're going to close immediately after, so make sure the program knows there is this write op happening
-        closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
-      }
-
-      if(closed)
-        break;
+      if(!closed)
+        tcp_or_tls_server->read_socket(client_socket); //since it's a websocket, add another read request right after
     }
-
-    if(!closed)
-      tcp_or_tls_server->read_socket(client_socket); //since it's a websocket, add another read request right after
   }
 }
 
