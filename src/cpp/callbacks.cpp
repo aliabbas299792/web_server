@@ -180,73 +180,86 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
     } 
   } else if(basic_web_server->websocket_connections.count(client_socket)) { //this bit should be just websocket frames
     std::vector<std::vector<uchar>> frames{};
+    std::vector<char> buffer_data(buffer, buffer + length);
+    bool closed = false;
 
-    auto packet_length = get_ws_frame_length(buffer);
+    int remaining_length = length;
 
-    if(basic_web_server->receiving_data.count(client_socket)){ //if there is already some pending data
+    if(basic_web_server->receiving_data.count(client_socket)){ //if there is already pending data
       auto *pending_item = &basic_web_server->receiving_data[client_socket];
 
-      if(pending_item->length == -1){
-        if(pending_item->buffer.size() > 10){
-          pending_item->length = get_ws_frame_length((const char*)&pending_item->buffer[0]);
-        }else{ //assuming the received buffer and the pending buffer are at least 10 bytes long
+      if(pending_item->length == -1){ //assuming the received buffer and the pending buffer are at least 10 bytes long
+        if(pending_item->buffer.size() + length < 10){
+          closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server); //doesn't deal with such small reads - just close the connection
+          std::cout << "super small read...\n";
+        }else{
           std::vector<char> temp_buffer(10); //we only need first 10 bytes for length
           temp_buffer.insert(temp_buffer.begin(), pending_item->buffer.begin(), pending_item->buffer.end());
           temp_buffer.insert(temp_buffer.begin(), buffer, buffer + ( 10 - pending_item->buffer.size() ));
           pending_item->length = get_ws_frame_length(&temp_buffer[0]);
         }
       }
+      
+      const auto required_length = pending_item->length - pending_item->buffer.size();
 
-      // std::cout << "pending: " << pending_item->buffer.size() << " ## wanted length: " << pending_item->length << " ## got length: " << length << std::endl;
+      if(required_length < length){ //more than enough data
+        remaining_length = length - required_length;
+        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
+        frames.push_back(std::move(pending_item->buffer));
 
-      if(length + pending_item->buffer.size() == pending_item->length){
+        char *remaining_data = nullptr;
+        remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
+        buffer = remaining_data;
+        basic_web_server->receiving_data.erase(client_socket);
+      
+      }else if(required_length == length){ //just enough data
+        remaining_length = 0; //we've used up all of the data
         pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
         frames.push_back(std::move(pending_item->buffer));
         basic_web_server->receiving_data.erase(client_socket);
 
-      }else if(length + pending_item->buffer.size() < pending_item->length){ //too little data
-        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
-
-      }else{ //too much data
-        long required_length = pending_item->length - pending_item->buffer.size();
-        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + required_length);
-        frames.push_back(std::move(pending_item->buffer));
-        char *remaining_data = nullptr;
-        remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
-
-        pending_item->buffer.clear();
-        pending_item->buffer.insert(pending_item->buffer.end(), remaining_data, remaining_data + (length - required_length)); //insert the remaining data
-        if(length - required_length < 10){ //probably not a full frame if less than 10 bytes
-          pending_item->length = -1;
-        }else{
-          pending_item->length = get_ws_frame_length((const char*)&pending_item->buffer[0]);
-          if(pending_item->length == pending_item->buffer.size()){
-            frames.push_back(std::move(pending_item->buffer));
-          }else if(pending_item->length < pending_item->buffer.size()){
-            std::cout << "The case for more than 2 frames in one message hasn't been dealt with yet... (will probably crash the program)\n";
-          }
-        }
-      }
-
-    }else if(length >= packet_length){ //is exactly how much was needed
-      frames.push_back(std::vector<uchar>(buffer, buffer + length));
+      }else{ //too little data
+        remaining_length = 0; //we've used up all of the data
+        pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length);
       
-    }else{ //if there is no pending data, make this pending
+      }
+    }
+    
+    //by this point, the data in the buffer is guaranteed to start with a new frame
+    while(remaining_length > 10){ //you only loop while greater than 10 bytes, since under 10 bytes may not have enough data to get the length
+      auto packet_length = get_ws_frame_length(buffer);
+      
+      if(remaining_length >= packet_length){
+        frames.push_back(std::vector<uchar>(buffer, buffer + packet_length));
+        char *remaining_data = nullptr;
+        remove_first_n_elements(buffer, (int)remaining_length, remaining_data, (int)packet_length);
+        buffer = remaining_data;
+        remaining_length -= packet_length;
+      }else{
+        break;
+      }
+    }
+
+    //by this point only the beginnings of frames should be left, if the remaining_length is not 0
+    if(remaining_length > 0){
       auto *pending_item = &basic_web_server->receiving_data[client_socket];
-      pending_item->length = packet_length;
-      pending_item->buffer.insert(pending_item->buffer.end(), buffer, buffer + length); 
+      pending_item->buffer = std::vector<uchar>(buffer, buffer + remaining_length);
+      if(remaining_length > 10){
+        pending_item->length = get_ws_frame_length(buffer);
+      }else{
+        pending_item->length = -1;
+      }
     }
 
     //by this point the frame has definitely been fully received
 
     std::vector<uchar> frame_contents{};
-    bool closed = false;
     
     for(const auto &frame : frames){
       if(frame.size()){
         auto processed_data = decode_websocket_frame(frame);
-        std::cout << "got a frame of size: " << processed_data.second.size() << " ## opcode: " << processed_data.first << "\n";
 
+        frame_contents.clear();
         //for now finishes and prints last 200 bytes
         if(processed_data.first == 1){ // 1 is to indicate that it's done
           if(basic_web_server->websocket_frames.count(client_socket)){
@@ -275,13 +288,7 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
         //this is where you'd deal with websocket connections
         std::cout << "Received a message of size: " << frame_contents.size() << "\n";
 
-        std::string str = "";
-        for(int i = 0; i < 1024*1024*17; i++){
-          str += "A";
-        }
-        str += "... hello world...";
-
-        auto data = make_ws_frame(str, 1); //echos back whatever you send
+        auto data = make_ws_frame(std::string((const char*)&frame_contents[0], frame_contents.size()), 1); //echos back whatever you send
         tcp_or_tls_server->write_socket(client_socket, std::move(data));
         
         basic_web_server->close_pending_ops_map[client_socket]++;

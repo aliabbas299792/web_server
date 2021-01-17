@@ -28,7 +28,6 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
 void server::write_socket(int client_socket, std::vector<char> &&buff){
   send_data[client_socket].push(write_data(std::move(buff))); //adds this to the write queue for this socket
   const auto data_ref = send_data[client_socket].back(); //reference to what we just added
-  std::cout << "queue size: " << send_data[client_socket].size() << " ## buff size: " << data_ref.buff.size() << "\n";
   if(send_data[client_socket].size() == 1){ //so that it only triggers the write call if the data just pushed is the only stuff in the queue
     if(is_tls)
       wolfSSL_write(socket_to_ssl[client_socket], &data_ref.buff[0], data_ref.buff.size()); //writes the file using wolfSSL
@@ -228,16 +227,18 @@ void server::serverLoop(){
         break;
       }
       case event_type::WRITE: {
-        auto *queue_ptr = &send_data[req->client_socket];
         if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
           int rc = add_write_req_continued(req, cqe->res);
           req = nullptr; //we don't want to free the req yet
           if(rc == 0) break;
         }
-        queue_ptr->pop(); //remove the last processed item
-        if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
-          const auto ref = queue_ptr->front();
-          add_write_req(req->client_socket, (char*)&ref.buff[0], ref.buff.size()); //adds a plain HTTP write request
+        if(send_data.count(req->client_socket)){
+          auto *queue_ptr = &send_data[req->client_socket];
+          queue_ptr->pop(); //remove the last processed item
+          if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
+            const auto ref = queue_ptr->front();
+            add_write_req(req->client_socket, (char*)&ref.buff[0], ref.buff.size()); //adds a plain HTTP write request
+          }
         }
         if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj); //call the write callback
         req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
