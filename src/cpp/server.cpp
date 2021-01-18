@@ -21,13 +21,14 @@ void server::close_socket(int client_socket){ //closes the socket and makes sure
     socket_to_ssl.erase(client_socket);
     recv_data.erase(client_socket);
   }
+  std::cout << "closing...\n";
   send_data.erase(client_socket); //send_data is used for both TLS and TCP
   close(client_socket); //finally, close the socket
 }
 
 void server::write_socket(int client_socket, std::vector<char> &&buff){
   send_data[client_socket].push(write_data(std::move(buff))); //adds this to the write queue for this socket
-  const auto data_ref = send_data[client_socket].back(); //reference to what we just added
+  const auto data_ref = send_data[client_socket].front(); //reference to what we just added
   if(send_data[client_socket].size() == 1){ //so that it only triggers the write call if the data just pushed is the only stuff in the queue
     if(is_tls)
       wolfSSL_write(socket_to_ssl[client_socket], &data_ref.buff[0], data_ref.buff.size()); //writes the file using wolfSSL
@@ -227,6 +228,8 @@ void server::serverLoop(){
         break;
       }
       case event_type::WRITE: {
+        std::cout << "res: " << cqe->res << "\n";
+        std::cout << (ulong)req->buffer << " == " << (ulong)&(send_data[req->client_socket].front().buff[0]) << "\n";
         if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
           int rc = add_write_req_continued(req, cqe->res);
           req = nullptr; //we don't want to free the req yet
@@ -236,8 +239,8 @@ void server::serverLoop(){
           auto *queue_ptr = &send_data[req->client_socket];
           queue_ptr->pop(); //remove the last processed item
           if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
-            const auto ref = queue_ptr->front();
-            add_write_req(req->client_socket, (char*)&ref.buff[0], ref.buff.size()); //adds a plain HTTP write request
+            const auto *buff = &queue_ptr->front().buff;
+            add_write_req(req->client_socket, (char*)&buff[0], buff->size()); //adds a plain HTTP write request
           }
         }
         if(w_cb != nullptr) w_cb(req->client_socket, this, custom_obj); //call the write callback

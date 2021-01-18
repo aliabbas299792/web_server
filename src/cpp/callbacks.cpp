@@ -308,7 +308,7 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
           
           basic_web_server->close_pending_ops_map[client_socket]++;
           //we're going to close immediately after, so make sure the program knows there is this write op happening
-          // closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
+          closed = close_ws_connection_req(client_socket, tcp_or_tls_server, basic_web_server);
         }
 
         if(closed)
