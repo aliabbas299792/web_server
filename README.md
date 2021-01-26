@@ -19,4 +19,6 @@ Explain bits:
 
 TODO:
  - For websocket, use the autobahn test suite at some point when you want to make it more conforming, very handy to test the web server
- - The send_data queue stuff is broken, look into it
+ - Make each connection have a unique ID and use that ID everywhere, and look into why file descriptor reuse causes crash
+ - Refactor to cut out all unordered_maps - use array of structs instead
+ - Use CRTP to make the server function and whatever else

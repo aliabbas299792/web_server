@@ -4,7 +4,8 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
-void a_cb(int client_socket, server *tcp_server, void *custom_obj){ //the accept callback
+template<server_type T>
+void a_cb(int client_socket, server<T> *tcp_server, void *custom_obj){ //the accept callback
   // std::cout << "Accepted new connection: " << client_socket << "\n";
 }
 
@@ -65,7 +66,8 @@ std::vector<char> make_ws_frame(std::string packet_msg, uchar opcode){
   return data;
 }
 
-bool close_ws_connection_req(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server, bool client_already_closed = false){
+template<server_type T>
+bool close_ws_connection_req(int client_socket, server<T> *tcp_or_tls_server, web_server *basic_web_server, bool client_already_closed = false){
   basic_web_server->close_pending_ops_map[client_socket]++;
   basic_web_server->websocket_connections.erase(client_socket);
   basic_web_server->websocket_frames.erase(client_socket);
@@ -76,7 +78,8 @@ bool close_ws_connection_req(int client_socket, server *tcp_or_tls_server, web_s
   return true;
 }
 
-bool close_ws_connection_confirm(int client_socket, server *tcp_or_tls_server, web_server *basic_web_server){
+template<server_type T>
+bool close_ws_connection_confirm(int client_socket, server<T> *tcp_or_tls_server, web_server *basic_web_server){
   if(!(basic_web_server->close_pending_ops_map[client_socket] - 1)){
     basic_web_server->close_pending_ops_map.erase(client_socket);
     tcp_or_tls_server->close_socket(client_socket);
@@ -119,7 +122,8 @@ std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> dat
   return {1, decoded}; //succesfully decoded, and is the final frame
 }
 
-std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int client_socket, web_server *basic_web_server, server *tcp_or_tls_server){
+template<server_type T>
+std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int client_socket, web_server *basic_web_server, server<T> *tcp_or_tls_server){
   std::vector<std::vector<uchar>> frames;
 
   int remaining_length = length;
@@ -205,7 +209,8 @@ bool is_valid_http_req(const char* buff, int length){
   return valid;
 }
 
-void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_tls_server, void *custom_obj){
+template<server_type T>
+void r_cb(int client_socket, char *buffer, unsigned int length, server<T> *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
 
   if(is_valid_http_req(buffer, length)){ //if not a valid HTTP req, then probably a websocket frame
@@ -321,7 +326,8 @@ void r_cb(int client_socket, char *buffer, unsigned int length, server *tcp_or_t
   }
 }
 
-void w_cb(int client_socket, server *tcp_or_tls_server, void *custom_obj){
+template<server_type T>
+void w_cb(int client_socket, server<T> *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
   if(basic_web_server->close_pending_ops_map.count(client_socket)){
     close_ws_connection_confirm(client_socket, tcp_or_tls_server, basic_web_server);
