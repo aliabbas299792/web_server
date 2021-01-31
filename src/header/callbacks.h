@@ -14,4 +14,6 @@ void r_cb(int client_fd, char *buffer, unsigned int length, server<T> *tcp_serve
 template<server_type T>
 void w_cb(int client_fd, server<T> *tcp_server, void *custom_obj);
 
+#include "../tcc/callbacks.tcc" //template implementation file
+
 #endif

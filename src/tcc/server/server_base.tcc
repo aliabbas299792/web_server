@@ -1,19 +1,19 @@
 #include "../../header/server.h"
 #include "../../header/utility.h"
 
-template<server_type T, typename U>
-void server_base<T, U>::start(){ //function to run the server
+template<server_type T>
+void server_base<T>::start(){ //function to run the server
   std::cout << "Running server\n";
-  if(!running_server) static_cast<server<T>*>(this)->serverLoop();
+  if(!running_server) static_cast<server<T>*>(this)->server_loop();
 }
 
-template<server_type T, typename U>
-void server_base<T, U>::read_socket(int client_idx) {
+template<server_type T>
+void server_base<T>::read_socket(int client_idx) {
   add_read_req(client_idx, event_type::READ);
 }
 
-template<server_type T, typename U>
-int server_base<T, U>::setup_listener(int port) {
+template<server_type T>
+int server_base<T>::setup_listener(int port) {
   int listener_fd;
   int yes = 1;
   addrinfo hints, *server_info, *traverser;
@@ -55,8 +55,8 @@ int server_base<T, U>::setup_listener(int port) {
   return listener_fd;
 }
 
-template<server_type T, typename U>
-int server_base<T, U>::add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length){
+template<server_type T>
+int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   io_uring_prep_accept(sqe, listener_fd, (sockaddr*)client_address, client_address_length, 0); //no flags set, prepares an SQE
 
@@ -69,8 +69,8 @@ int server_base<T, U>::add_accept_req(int listener_fd, sockaddr_storage *client_
   return 0; //maybe return is required for something else later
 }
 
-template<server_type T, typename U>
-int server_base<T, U>::add_read_req(int client_idx, event_type event){
+template<server_type T>
+int server_base<T>::add_read_req(int client_idx, event_type event){
   int client_socket = clients[client_idx].sockfd;
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
@@ -88,8 +88,8 @@ int server_base<T, U>::add_read_req(int client_idx, event_type event){
   return 0;
 }
 
-template<server_type T, typename U>
-int server_base<T, U>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
+template<server_type T>
+int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
   int client_socket = clients[client_idx].sockfd;
 
   request *req = (request*)std::malloc(sizeof(request));

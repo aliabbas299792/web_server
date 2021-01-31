@@ -33,7 +33,7 @@ template<server_type T>
 class server_base; //forward declaration
 
 template<server_type T>
-class server: server_base<T>{};
+class server;
 
 //the wolfSSL callbacks
 int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, server<server_type::TLS> *tcp_server, char *buff, int sz, int client_socket, bool accept);
@@ -117,7 +117,7 @@ template<>
 class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
   private:
     friend class server_base;
-    void server_loop() {};
+    void server_loop();
 
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
   public:
@@ -141,7 +141,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
 
     friend class server_base;
     void tls_accept(int client_socket);
-    void server_loop() {};
+    void server_loop();
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr;
   public:
@@ -158,5 +158,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     void write_socket(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
         void close_socket(int client_idx); //closing depends on what resources need to be freed
 };
+
+#include "../tcc/server/server_base.tcc" //template implementation file
 
 #endif

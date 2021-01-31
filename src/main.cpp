@@ -9,8 +9,8 @@ int main(){
 
   //create the server objects
   web_server basic_web_server;
-  server<server_type::NON_TLS> tcp_server(std::stoi(config_data["PORT"]), a_cb, r_cb, w_cb, &basic_web_server); //pass function pointers and a custom object
-  if(config_data["TLS"] == "yes")
+  server<server_type::NON_TLS> tcp_server(std::stoi(config_data["PORT"]), a_cb<server_type::NON_TLS>, r_cb<server_type::NON_TLS>, w_cb<server_type::NON_TLS>, &basic_web_server); //pass function pointers and a custom object
+  //if(config_data["TLS"] == "yes")
     //tcp_server.setup_tls(config_data["FULLCHAIN"], config_data["PKEY"]);
   tcp_server.start();
 

@@ -10,6 +10,19 @@ PKEY: /home/me/ssl/example.abc.key
 PORT: 443
 ```
 
+Structure:
+  server.h     -> included in `server_tls.cpp` and `server_non_tls.cpp` to implement the functions for those specialised bits
+               -> included by `server_base.tcc` for the `server_base` class
+               -> includes `server_base.tcc` because need to included template implementation files
+
+  callbacks.h  -> included by `callbacks.tcc` for the header files and whatnot
+               -> includes `callbacks.tcc` for the template implementation stuff
+
+  utility.h    -> included by most files for various utility functions
+
+  web_server.h -> included by `callbacks.h` for the asbtracted web server stuff
+
+
 Explain bits:
  - In web_server.h, close_pending_ops_map is incremented when a write is made just before trying to close a websocket connection, and then in the write callback afterwards, they are decremented, up until the next decrement makes it 0 (i.e the close connection message has been sent)
  - websocket_frames in the same file is basically a map of client_socket to a vector of decoded data, which was extracted from 1 or more websocket frames, this is erased once the entire frame has been read
@@ -20,5 +33,5 @@ Explain bits:
 TODO:
  - For websocket, use the autobahn test suite at some point when you want to make it more conforming, very handy to test the web server
  - Make each connection have a unique ID and use that ID everywhere, and look into why file descriptor reuse causes crash
- - Refactor to cut out all unordered_maps - use array of structs instead
- - Use CRTP to make the server function and whatever else
+ - Implement server_loop for both TLS and NON_TLS
+ - Implement the fixed wolfssl callback stuff
