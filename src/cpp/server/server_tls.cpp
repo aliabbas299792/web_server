@@ -76,3 +76,7 @@ void server<server_type::TLS>::tls_accept(int client_idx){
 
   wolfSSL_accept(ssl); //initialise the wolfSSL accept procedure
 }
+
+void server<server_type::TLS>::server_loop(){
+  
+}

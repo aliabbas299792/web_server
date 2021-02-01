@@ -8,7 +8,28 @@ void server_base<T>::start(){ //function to run the server
 }
 
 template<server_type T>
-void server_base<T>::read_socket(int client_idx) {
+int server_base<T>::setup_client(int client_socket){ //returns index into clients array
+  auto index = 0;
+
+  if(freed_indexes.size()){ //if there's a free index, give that
+    index = freed_indexes.front();
+    freed_indexes.pop();
+
+    int prev_id = clients[index].id;
+    std::memset(&clients[index], 0, sizeof(client<T>));
+    clients[index].id = (prev_id + 1) % 100; //ID loops every 100
+  }else{
+    clients.push_back(client<T>()); //otherwise give a new one
+    index = clients.size()-1;
+  }
+  
+  active_connections.insert(index);
+  clients[index].sockfd = client_socket;
+  return index;
+}
+
+template<server_type T>
+void server_base<T>::read_connection(int client_idx) {
   add_read_req(client_idx, event_type::READ);
 }
 
@@ -71,17 +92,16 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
 
 template<server_type T>
 int server_base<T>::add_read_req(int client_idx, event_type event){
-  int client_socket = clients[client_idx].sockfd;
-
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
   req->total_length = READ_SIZE;;
   req->event = event;
-  req->client_socket = client_socket;
+  req->client_idx = client_idx;
+  req->ID = clients[client_idx].id;
   std::memset(req->buffer, 0, READ_SIZE);
   
-  io_uring_prep_read(sqe, client_socket, req->buffer, READ_SIZE, 0); //don't read at an offset
+  io_uring_prep_read(sqe, clients[client_idx].sockfd, req->buffer, READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
@@ -90,17 +110,16 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
 
 template<server_type T>
 int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
-  int client_socket = clients[client_idx].sockfd;
-
   request *req = (request*)std::malloc(sizeof(request));
   std::memset(req, 0, sizeof(request));
-  req->client_socket = client_socket;
+  req->client_idx = client_idx;
   req->total_length = length;
   req->buffer = buffer;
   req->event = event;
+  req->ID = clients[client_idx].id;
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, req->client_socket, buffer, length, 0); //do not write at an offset
+  io_uring_prep_write(sqe, clients[client_idx].sockfd, buffer, length, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 

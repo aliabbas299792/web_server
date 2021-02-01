@@ -41,19 +41,20 @@ int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
 template<server_type T>
-using accept_callback = void (*)(int client_socket, server<T> *tcp_server, void *custom_obj);
+using accept_callback = void (*)(int client_idx, server<T> *tcp_server, void *custom_obj);
 
 template<server_type T>
-using read_callback = void(*)(int client_socket, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj);
+using read_callback = void(*)(int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj);
 
 template<server_type T>
-using write_callback = void(*)(int client_socket, server<T> *tcp_server, void *custom_obj);
+using write_callback = void(*)(int client_idx, server<T> *tcp_server, void *custom_obj);
 
 struct request {
   event_type event;
-  int client_socket = 0;
-  int written = 0; //how much written so far
-  int total_length = 0; //how much data is in the request, in bytes
+  int client_idx{};
+  int ID{};
+  int written{}; //how much written so far
+  int total_length{}; //how much data is in the request, in bytes
   char *buffer = nullptr;
 };
 
@@ -64,8 +65,8 @@ struct write_data {
 };
 
 struct client_base {
-    int id = 0;
-    int sockfd = 0;
+    int id{};
+    int sockfd{};
     std::queue<write_data> send_data{};
 };
 
@@ -78,7 +79,7 @@ struct client<server_type::NON_TLS>: client_base {};
 template<>
 struct client<server_type::TLS>: client_base {
     WOLFSSL *ssl = nullptr;
-    int accept_last_written = 0;
+    int accept_last_written{};
     std::vector<char> accept_recv_data{};
 };
 
@@ -104,13 +105,15 @@ class server_base {
 
     //need it protected rather than private, since need to access from children
     int add_write_req(int client_socket, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
-  private:
     //used internally for sending messages
     int add_read_req(int client_socket, event_type event); //adds a read request to the io_uring ring
+    
+    int setup_client(int client_socket);
+  private:
   public:
     void start(); //function to start the server
 
-    void read_socket(int client_idx);
+    void read_connection(int client_idx);
 };
 
 template<>
@@ -128,8 +131,8 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
       void *custom_obj = nullptr
     );
 
-    void write_socket(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
-    void close_socket(int client_idx); //closing depends on what resources need to be freed
+    void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
+    void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
 template<>
