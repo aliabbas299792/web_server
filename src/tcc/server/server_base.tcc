@@ -15,9 +15,9 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
     index = freed_indexes.front();
     freed_indexes.pop();
 
-    int prev_id = clients[index].id;
-    std::memset(&clients[index], 0, sizeof(client<T>));
-    clients[index].id = (prev_id + 1) % 100; //ID loops every 100
+    auto &client = clients[index];
+
+    client.id = (client.id + 1) % 100; //ID loops every 100
   }else{
     clients.push_back(client<T>()); //otherwise give a new one
     index = clients.size()-1;
@@ -25,6 +25,9 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
   
   active_connections.insert(index);
   clients[index].sockfd = client_socket;
+
+  std::cout << "setting up client with fd " << client_socket << " and index " << index << "\n";
+
   return index;
 }
 

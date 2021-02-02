@@ -31,7 +31,11 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
   auto *client = &clients[client_idx];
 
   active_connections.erase(client_idx);
+
+  close(client->sockfd);
+  
   client->sockfd = 0;
+  client->send_data = {};
 
   freed_indexes.push(client_idx);
 }
@@ -78,28 +82,34 @@ void server<server_type::NON_TLS>::server_loop(){
       case event_type::READ: {
         if(cqe->res > 0)
           if(read_cb != nullptr) read_cb(req->client_idx, req->buffer, cqe->res, this, custom_obj);
+        else
+          close_connection(req->client_idx);
         break;
       }
       case event_type::WRITE: {
-        std::cout << "res: " << cqe->res << "\n";
-        std::cout << (ulong)req->buffer << " == " << (ulong)&(clients[req->client_idx].send_data.front().buff[0]) << "\n";
-        if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
-          int rc = add_write_req_continued(req, cqe->res);
-          req = nullptr; //we don't want to free the req yet
-          if(rc == 0) break;
-        }
-        if(active_connections.count(req->client_idx) && clients[req->client_idx].id == req->ID){
-          //the above will check specifically if the client is still valid, since in the case that
-          //a new client joins immediately after old one leaves, they might get the same clients
-          //array index, but the ID's would be different
-          auto *queue_ptr = &clients[req->client_idx].send_data;
-          queue_ptr->pop(); //remove the last processed item
-          if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
-            const auto *buff = &queue_ptr->front().buff;
-            add_write_req(req->client_idx, event_type::WRITE, (char*)&buff[0], buff->size()); //adds a plain HTTP write request
+        if(cqe->res < 0 && clients[req->client_idx].id == req->ID) {
+          close_connection(req->client_idx);
+        }else{
+          std::cout << "res: " << cqe->res << "\n";
+          std::cout << (ulong)req->buffer << " == " << (ulong)&(clients[req->client_idx].send_data.front().buff[0]) << "\n";
+          if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
+            int rc = add_write_req_continued(req, cqe->res);
+            req = nullptr; //we don't want to free the req yet
+            if(rc == 0) break;
           }
+          if(active_connections.count(req->client_idx) && clients[req->client_idx].id == req->ID){
+            //the above will check specifically if the client is still valid, since in the case that
+            //a new client joins immediately after old one leaves, they might get the same clients
+            //array index, but the ID's would be different
+            auto *queue_ptr = &clients[req->client_idx].send_data;
+            queue_ptr->pop(); //remove the last processed item
+            if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
+              const auto *buff = &queue_ptr->front().buff;
+              add_write_req(req->client_idx, event_type::WRITE, (char*)&buff[0], buff->size()); //adds a plain HTTP write request
+            }
+          }
+          if(write_cb != nullptr) write_cb(req->client_idx, this, custom_obj); //call the write callback
         }
-        if(write_cb != nullptr) write_cb(req->client_idx, this, custom_obj); //call the write callback
         req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
         break;
       }
