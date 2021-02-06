@@ -5,6 +5,14 @@
 
 using uchar = unsigned char;
 
+enum websocket_non_control_opcodes {
+  text_frame = 0x01,
+  binary_frame = 0x02,
+  close_connection = 0x08,
+  ping = 0x09,
+  pong = 0xA
+};
+
 struct receiving_data_info{
   receiving_data_info(int length = -1, std::vector<uchar> buffer = {}) : length(length), buffer(buffer) {}
   int length = -1;

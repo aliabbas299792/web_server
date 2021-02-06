@@ -12,7 +12,7 @@ template<server_type T>
 void r_cb(int client_fd, char *buffer, unsigned int length, server<T> *tcp_server, void *custom_obj);
 
 template<server_type T>
-void w_cb(int client_fd, server<T> *tcp_server, void *custom_obj);
+void w_cb(int client_fd, bool error, server<T> *tcp_server, void *custom_obj);
 
 #include "../tcc/callbacks.tcc" //template implementation file
 

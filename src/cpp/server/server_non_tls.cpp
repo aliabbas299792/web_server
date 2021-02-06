@@ -20,11 +20,11 @@ server<server_type::NON_TLS>::server(
 
 void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff) {
   auto *client = &clients[client_idx];
-  std::cout << buff.size() << "\n";
   client->send_data.push(write_data(std::move(buff)));
-  const auto data_ref = client->send_data.front();
-  std::cout << (ulong)&data_ref.buff[0] << " is ref\n";
-  add_write_req(client_idx, event_type::WRITE, (char*)&data_ref.buff[0], data_ref.buff.size());
+  if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
+    const auto data_ref = client->send_data.front();
+    add_write_req(client_idx, event_type::WRITE, (char*)&data_ref.buff[0], data_ref.buff.size());
+  }
 }
 
 void server<server_type::NON_TLS>::close_connection(int client_idx) {
@@ -41,12 +41,13 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
 }
 
 int server<server_type::NON_TLS>::add_write_req_continued(request *req, int written) { //for long plain HTTP write requests, this writes at the correct offset
-  int client_socket = clients[req->client_idx].sockfd;
+  auto &client = clients[req->client_idx];
+  auto &to_write = client.send_data.front();
 
   req->written += written;
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, client_socket, &req->buffer[req->written], req->total_length - req->written, 0); //do not write at an offset
+  io_uring_prep_write(sqe, client.sockfd, &to_write.buff[req->written], req->total_length - req->written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
@@ -72,6 +73,8 @@ void server<server_type::NON_TLS>::server_loop(){
       case event_type::ACCEPT: {
         add_accept_req(listener_fd, &client_address, &client_address_length);
         auto client_idx = setup_client(cqe->res);
+        active_connections.insert(client_idx); 
+        //above basically says this connection is now active, checking if this connection replaced an existing but broken one happens elsewhere
 
         if(accept_cb != nullptr) accept_cb(client_idx, this, custom_obj);
         
@@ -87,11 +90,12 @@ void server<server_type::NON_TLS>::server_loop(){
         break;
       }
       case event_type::WRITE: {
-        if(cqe->res < 0 && clients[req->client_idx].id == req->ID) {
+        bool error = false;
+        if(cqe->res < 0 || clients[req->client_idx].id != req->ID) { //if the ID is different then it means the connection has been freed already
+          error = true;
           close_connection(req->client_idx);
         }else{
-          std::cout << "res: " << cqe->res << "\n";
-          std::cout << (ulong)req->buffer << " == " << (ulong)&(clients[req->client_idx].send_data.front().buff[0]) << "\n";
+          error = false;
           if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
             int rc = add_write_req_continued(req, cqe->res);
             req = nullptr; //we don't want to free the req yet
@@ -108,8 +112,8 @@ void server<server_type::NON_TLS>::server_loop(){
               add_write_req(req->client_idx, event_type::WRITE, (char*)&buff[0], buff->size()); //adds a plain HTTP write request
             }
           }
-          if(write_cb != nullptr) write_cb(req->client_idx, this, custom_obj); //call the write callback
         }
+        if(write_cb != nullptr) write_cb(req->client_idx, error, this, custom_obj); //call the write callback
         req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
         break;
       }

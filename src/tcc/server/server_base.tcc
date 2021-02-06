@@ -26,8 +26,6 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
   active_connections.insert(index);
   clients[index].sockfd = client_socket;
 
-  std::cout << "setting up client with fd " << client_socket << " and index " << index << "\n";
-
   return index;
 }
 

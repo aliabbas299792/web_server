@@ -47,7 +47,7 @@ template<server_type T>
 using read_callback = void(*)(int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj);
 
 template<server_type T>
-using write_callback = void(*)(int client_idx, server<T> *tcp_server, void *custom_obj);
+using write_callback = void(*)(int client_idx, bool error, server<T> *tcp_server, void *custom_obj);
 
 struct request {
   event_type event;
@@ -80,7 +80,7 @@ template<>
 struct client<server_type::TLS>: client_base {
     WOLFSSL *ssl = nullptr;
     int accept_last_written{};
-    std::vector<char> accept_recv_data{};
+    std::vector<char> recv_data{};
 };
 
 template<server_type T>
@@ -104,11 +104,11 @@ class server_base {
     bool running_server = false;
 
     //need it protected rather than private, since need to access from children
-    int add_write_req(int client_socket, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
+    int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
     //used internally for sending messages
-    int add_read_req(int client_socket, event_type event); //adds a read request to the io_uring ring
+    int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
     
-    int setup_client(int client_socket);
+    int setup_client(int client_idx);
   private:
   public:
     void start(); //function to start the server
@@ -138,7 +138,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
 template<>
 class server<server_type::TLS>: public server_base<server_type::TLS> {
   private:
-    friend int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, server *tcp_server, char *buff, int sz, int client_socket, bool accept);
+    friend int tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *buff, int sz, bool accept);
     friend int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
     friend int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
@@ -158,8 +158,8 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       void *custom_obj = nullptr
     );
 
-    void write_socket(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
-        void close_socket(int client_idx); //closing depends on what resources need to be freed
+    void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
+    void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
 #include "../tcc/server/server_base.tcc" //template implementation file

@@ -29,7 +29,7 @@ ulong get_ws_frame_length(const char *buffer){
   return packet_length + 6; // +6 bytes for the header data
 }
 
-std::vector<char> make_ws_frame(std::string packet_msg, uchar opcode){
+std::vector<char> make_ws_frame(std::string packet_msg, websocket_non_control_opcodes opcode){
   //gets the correct offsets and sizes
   int offset = 2; //first 2 bytes for the header data (excluding the extended length bit)
   uchar payload_len_char = 0;
@@ -72,7 +72,7 @@ bool close_ws_connection_req(int client_idx, server<T> *tcp_or_tls_server, web_s
   basic_web_server->websocket_connections.erase(client_idx);
   basic_web_server->websocket_frames.erase(client_idx);
   if(!client_already_closed) {
-    auto data = make_ws_frame("", 0x8); //the close opcode
+    auto data = make_ws_frame("", websocket_non_control_opcodes::close_connection);
     tcp_or_tls_server->write_connection(client_idx, std::move(data));
   }
   return true;
@@ -294,21 +294,21 @@ void r_cb(int client_idx, char *buffer, unsigned int length, server<T> *tcp_or_t
             closed = close_ws_connection_req(client_idx, tcp_or_tls_server, basic_web_server, true);
           }else if(processed_data.first == 2){ //ping opcode
             std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
-            auto data = make_ws_frame(body_data, 0xA);
+            auto data = make_ws_frame(body_data, websocket_non_control_opcodes::pong);
             tcp_or_tls_server->write_connection(client_idx, std::move(data));
           }
         }
 
         if(frame_contents.size() > 0){
           //this is where you'd deal with websocket connections
-          std::cout << "Received a message of size: " << frame_contents.size() << "\n";
-
           std::string str = "";
           for(int i = 0; i < 1024*1024*5; i++){
             str += "A";
           }
 
-          auto data = make_ws_frame(str, 2); //echos back whatever you send
+          str += " ... hello world.";
+
+          auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
           tcp_or_tls_server->write_connection(client_idx, std::move(data));
           
           basic_web_server->close_pending_ops_map[client_idx]++;
@@ -327,14 +327,26 @@ void r_cb(int client_idx, char *buffer, unsigned int length, server<T> *tcp_or_t
 }
 
 template<server_type T>
-void w_cb(int client_idx, server<T> *tcp_or_tls_server, void *custom_obj){
+void force_shut_ws_connection(int client_idx, server<T> *tcp_or_tls_server, web_server *basic_web_server){
+  basic_web_server->close_pending_ops_map.erase(client_idx);
+  basic_web_server->websocket_connections.erase(client_idx);
+  basic_web_server->websocket_frames.erase(client_idx);
+  tcp_or_tls_server->close_connection(client_idx);
+}
+
+template<server_type T>
+void w_cb(int client_idx, bool error, server<T> *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server*)custom_obj;
-  if(basic_web_server->close_pending_ops_map.count(client_idx)){
+
+  if(error) //if there was an error then clean up and force shutdown
+    force_shut_ws_connection(client_idx, tcp_or_tls_server, basic_web_server);
+  else if(basic_web_server->close_pending_ops_map.count(client_idx) || error){
     close_ws_connection_confirm(client_idx, tcp_or_tls_server, basic_web_server);
   }else{
-    if(basic_web_server->websocket_connections.count(client_idx))
+    if(basic_web_server->websocket_connections.count(client_idx)){
       tcp_or_tls_server->read_connection(client_idx);
-    else
+    }else{
       tcp_or_tls_server->close_connection(client_idx); //for web requests you close the connection right after
+    }
   }
 }
