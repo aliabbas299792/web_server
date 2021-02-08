@@ -31,6 +31,7 @@ Explain bits:
  - receiving_data is used when interfacing with the tls/tcp server, basically the server may not give enough data for an entire frame, so this map is used to store incomplete frames, until they are completed
  - In server.cpp, under the READ_SSL case, read_reqs are added on open sockets only if the amount read was 0 - this is because wolfSSL is prohibited from adding read_reqs like it does when establishing the connection, instead it just returns that it wants more data
    - - this means that we can use that while loop with wolfSSL_read, and we'll never get duplicate read_reqs on the same socket, as that can lead to weird behaviour like some read_reqs erasing data or placing data in the wrong order, but we delegate the initial read_req to the r_cb callback
+ - In server.h I use an ordered set instead of a queue to store freed indexes, since, unlike a queue, if the same value is pushed twice you don't get duplicates, and not using an unordered set since this allows us to get the first element in the set, which is always going to be the lowest valued element (and we want to make sure the lowest value indexes are populated before the higher valued ones, so this works out great)
 
 TODO:
  - For websocket, use the autobahn test suite at some point when you want to make it more conforming, very handy to test the web server
