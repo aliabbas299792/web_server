@@ -21,7 +21,8 @@ void server<server_type::TLS>::write_connection(int client_idx, std::vector<char
   client->send_data.push(write_data(std::move(buff)));
   const auto data_ref = client->send_data.front();
   
-  wolfSSL_write(client->ssl, &data_ref.buff[0], data_ref.buff.size()); //writes the data using wolfSSL
+  if(client->send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
+    wolfSSL_write(client->ssl, &data_ref.buff[0], data_ref.buff.size()); //writes the data using wolfSSL
 }
 
 server<server_type::TLS>::server(

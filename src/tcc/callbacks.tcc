@@ -310,7 +310,7 @@ void r_cb(int client_idx, char *buffer, unsigned int length, server<T> *tcp_or_t
 
           auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
           tcp_or_tls_server->write_connection(client_idx, std::move(data));
-          
+  
           basic_web_server->close_pending_ops_map[client_idx]++;
           //we're going to close immediately after, so make sure the program knows there is this write op happening
           closed = close_ws_connection_req(client_idx, tcp_or_tls_server, basic_web_server);
