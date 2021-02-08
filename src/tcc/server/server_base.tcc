@@ -12,8 +12,8 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
   auto index = 0;
 
   if(freed_indexes.size()){ //if there's a free index, give that
-    index = freed_indexes.front();
-    freed_indexes.pop();
+    index = *freed_indexes.begin(); //get first element in set
+    freed_indexes.erase(index); //erase first element in set
 
     auto &freed_client = clients[index];
 

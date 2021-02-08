@@ -34,7 +34,7 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
 
   close(client->sockfd);
 
-  freed_indexes.push(client_idx);
+  freed_indexes.insert(client_idx);
 }
 
 int server<server_type::NON_TLS>::add_write_req_continued(request *req, int written) { //for long plain HTTP write requests, this writes at the correct offset

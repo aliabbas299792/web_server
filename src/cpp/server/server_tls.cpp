@@ -11,7 +11,9 @@ void server<server_type::TLS>::close_connection(int client_idx) {
   client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
   active_connections.erase(client_idx);
 
-  freed_indexes.push(client_idx);
+  freed_indexes.insert(client_idx);
+
+  std::cout << "end it all called for " << client_idx << " with id " << clients[client_idx].id << "\n";
 }
 
 void server<server_type::TLS>::write_connection(int client_idx, std::vector<char> &&buff) {

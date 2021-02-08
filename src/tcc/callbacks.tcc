@@ -346,6 +346,7 @@ void w_cb(int client_idx, bool error, server<T> *tcp_or_tls_server, void *custom
     if(basic_web_server->websocket_connections.count(client_idx)){
       tcp_or_tls_server->read_connection(client_idx);
     }else{
+      std::cout << "invoking end my life from here...\n";
       tcp_or_tls_server->close_connection(client_idx); //for web requests you close the connection right after
     }
   }

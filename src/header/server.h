@@ -19,6 +19,7 @@
 #include <iostream> //for string and iostream stuff
 #include <unordered_map>
 #include <unordered_set>
+#include <set> //ordered set for freed indexes, I believe it is sorted in ascending order which is exactly what we want
 #include <chrono>
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
@@ -95,7 +96,7 @@ class server_base {
     void *custom_obj; //it can be anything
 
     std::unordered_set<int> active_connections{};
-    std::queue<int> freed_indexes{};
+    std::set<int> freed_indexes{}; //using a set to store free indexes instead
     std::vector<client<T>> clients{};
 
     int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
