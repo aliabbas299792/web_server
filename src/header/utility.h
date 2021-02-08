@@ -45,7 +45,9 @@ void remove_first_n_elements(T *data, int length, T *&ret_buff, int num_elements
   }else{
     std::memcpy(&data[0], &data[num_elements_to_remove], size - num_elements_to_remove);
   }
-  ret_buff = (T*)std::malloc(size - num_elements_to_remove);
+  char *temp_ptr = (T*)std::malloc(size - num_elements_to_remove);
+  free(ret_buff);
+  ret_buff = temp_ptr;
   std::memcpy(ret_buff, data, size - num_elements_to_remove);
 }
 
