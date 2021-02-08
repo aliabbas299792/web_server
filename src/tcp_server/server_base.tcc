@@ -1,5 +1,5 @@
-#include "../../header/server.h"
-#include "../../header/utility.h"
+#include "../header/server.h"
+#include "../header/utility.h"
 
 template<server_type T>
 void server_base<T>::start(){ //function to run the server

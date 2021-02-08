@@ -163,6 +163,6 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
-#include "../tcc/server/server_base.tcc" //template implementation file
+#include "../tcp_server/server_base.tcc" //template implementation file
 
 #endif

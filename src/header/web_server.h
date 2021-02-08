@@ -2,6 +2,7 @@
 #define WEB_SERVER
 
 #include "server.h"
+#include "utility.h"
 
 using uchar = unsigned char;
 

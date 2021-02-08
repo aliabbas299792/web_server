@@ -1,5 +1,5 @@
-#include "../../header/server.h"
-#include "../../header/utility.h"
+#include "../header/server.h"
+#include "../header/utility.h"
 
 server<server_type::NON_TLS>::server(
   int listen_port,

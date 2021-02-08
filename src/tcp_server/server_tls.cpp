@@ -1,5 +1,5 @@
-#include "../../header/server.h"
-#include "../../header/utility.h"
+#include "../header/server.h"
+#include "../header/utility.h"
 
 void server<server_type::TLS>::close_connection(int client_idx) {
   auto &client = clients[client_idx];
