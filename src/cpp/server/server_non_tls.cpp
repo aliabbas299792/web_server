@@ -33,9 +33,6 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
   active_connections.erase(client_idx);
 
   close(client->sockfd);
-  
-  client->sockfd = 0;
-  client->send_data = {};
 
   freed_indexes.push(client_idx);
 }

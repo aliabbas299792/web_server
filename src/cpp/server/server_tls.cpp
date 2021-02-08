@@ -6,12 +6,10 @@ void server<server_type::TLS>::close_connection(int client_idx) {
   wolfSSL_shutdown(client.ssl);
   wolfSSL_free(client.ssl);
 
+  close(client.sockfd);
+
+  client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
   active_connections.erase(client_idx);
-  client.sockfd = 0;
-  client.send_data = {};
-  client.recv_data = {};
-  client.accept_last_written = 0;
-  client.ssl = nullptr;
 
   freed_indexes.push(client_idx);
 }
@@ -20,6 +18,7 @@ void server<server_type::TLS>::write_connection(int client_idx, std::vector<char
   auto *client = &clients[client_idx];
   client->send_data.push(write_data(std::move(buff)));
   const auto data_ref = client->send_data.front();
+  
   wolfSSL_write(client->ssl, &data_ref.buff[0], data_ref.buff.size()); //writes the data using wolfSSL
 }
 
@@ -93,21 +92,29 @@ void server<server_type::TLS>::server_loop(){
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
-    
-    switch(req->event){
-      case event_type::ACCEPT: {
-        auto client_idx = setup_client(cqe->res);
-        add_accept_req(listener_fd, &client_address, &client_address_length);
-        tls_accept(client_idx);
+
+    if(req->event != event_type::ACCEPT && (cqe->res <= 0 || clients[req->client_idx].id != req->ID)){
+      if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
         req->buffer = nullptr; //done with the request buffer
-        break;
+      if(cqe->res < 0 && clients[req->client_idx].id == req->ID){
+        std::cout << "\terror: " << cqe->res << "\n";
+        close_connection(req->client_idx); //making sure to remove any data relating to it as well
       }
-      case event_type::ACCEPT_READ: {
-        std::cout << "ACCEPT_READ\n";
-        auto &client = clients[req->client_idx];
-        if(cqe->res > 0 && client.id == req->ID) { //if an error occurred, don't try to negotiate the connection (or if the connection has been replaced)
-          auto ssl = client.ssl;
-          if(!client.recv_data.size()) { //if there is no data in the map, add it
+    }else{
+      switch(req->event){
+        case event_type::ACCEPT: {
+          auto client_idx = setup_client(cqe->res);
+          std::cout << "\n\nclient index is " << client_idx << " with id " << clients[client_idx].id << "\n";
+          add_accept_req(listener_fd, &client_address, &client_address_length);
+          tls_accept(client_idx);
+          req->buffer = nullptr; //done with the request buffer
+          break;
+        }
+        case event_type::ACCEPT_READ: {
+          std::cout << "ACCEPT_READ\n";
+          auto &client = clients[req->client_idx];
+          const auto &ssl = client.ssl;
+          if(client.recv_data.size() == 0) { //if there is no data in the buffer, add it
             client.recv_data = std::vector<char>(req->buffer, req->buffer + cqe->res);
           }else{ //otherwise copy the new data to the end of the old data
             auto *vec = &client.recv_data;
@@ -115,57 +122,54 @@ void server<server_type::TLS>::server_loop(){
           }
           std::cout << "\twe think it's this much: " << client.recv_data.size() << "\n";
           if(wolfSSL_accept(ssl) == 1){ //that means the connection was successfully established
+            std::cout << "\t\t\tACCEPTED NEW CLIENT\n";
             if(accept_cb != nullptr) accept_cb(req->client_idx, this, custom_obj);
             active_connections.insert(req->client_idx);
 
+            auto &data = client.recv_data; //the data vector
+            const auto recvd_amount = data.size();
+            std::cout << "recvd amount after accept is: " << recvd_amount << std::endl;
             std::vector<char> buffer(READ_SIZE);
             auto amount_read = wolfSSL_read(ssl, &buffer[0], READ_SIZE);
+
+            std::cout << "amount read: " << amount_read << std::endl;
             //above will either add in a read request, or get whatever is left in the local buffer (as we might have got the HTTP request with the handshake)
 
             client.recv_data = std::vector<char>{};
             if(amount_read > -1)
               if(read_cb != nullptr) read_cb(req->client_idx, &buffer[0], amount_read, this, custom_obj);
           }
-        }else{
-          close_connection(req->client_idx); //making sure to remove any data relating to it as well
+          break;
         }
-        break;
-      }
-      case event_type::ACCEPT_WRITE: { //used only for when wolfSSL needs to write data during the TLS handshake
-        std::cout << "ACCEPT_WRITE, written: " << cqe->res << "\n";
-        auto &client = clients[req->client_idx];
-        if(cqe->res <= 0 || client.id != req->ID) { //if an error occurred, don't try to negotiate the connection
-          close_connection(req->client_idx); //making sure to remove any data relating to it as well
-        }else{
+        case event_type::ACCEPT_WRITE: { //used only for when wolfSSL needs to write data during the TLS handshake
+          std::cout << "ACCEPT_WRITE, written: " << cqe->res << "\n";
+          auto &client = clients[req->client_idx];
           client.accept_last_written = cqe->res; //this is the amount that was last written, used in the tls_write callback
-          std::cout << "\taccept: " << wolfSSL_accept(client.ssl) << "\n"; //call accept again
+          wolfSSL_accept(client.ssl); //call accept again
+          req->buffer = nullptr; //done with the request buffer
+          break;
         }
-        req->buffer = nullptr; //done with the request buffer
-        break;
-      }
-      case event_type::WRITE: { //used for generally writing over TLS
-        auto &client = clients[req->client_idx];
-        if(cqe->res > 0 && client.id == req->ID && client.send_data.size() > 0){ //ensure this connection is still active
-          auto &data_ref = client.send_data.front();
-          data_ref.last_written = cqe->res;
-          int written = wolfSSL_write(client.ssl, &(data_ref.buff[0]), data_ref.buff.size());
-          if(written > -1){ //if it's not negative, it's all been written, so this write call is done
-            client.send_data.pop();
-            if(write_cb != nullptr) write_cb(req->client_idx, false, this, custom_obj); //no error
-            if(client.send_data.size()){ //if the write queue isn't empty, then write that as well
-              auto &data_ref = client.send_data.front();
-              wolfSSL_write(client.ssl, &(data_ref.buff[0]), data_ref.buff.size());
+        case event_type::WRITE: { //used for generally writing over TLS
+          auto &client = clients[req->client_idx];
+          if(client.send_data.size() > 0){ //ensure this connection is still active
+            auto &data_ref = client.send_data.front();
+            data_ref.last_written = cqe->res;
+
+            int written = wolfSSL_write(client.ssl, &(data_ref.buff[0]), data_ref.buff.size());
+            if(written > -1){ //if it's not negative, it's all been written, so this write call is done
+              client.send_data.pop();
+              if(write_cb != nullptr) write_cb(req->client_idx, false, this, custom_obj); //no error
+              if(client.send_data.size()){ //if the write queue isn't empty, then write that as well
+                auto &data_ref = client.send_data.front();
+                wolfSSL_write(client.ssl, &(data_ref.buff[0]), data_ref.buff.size());
+              }
             }
           }
-        }else{
-          close_connection(req->client_idx); //otherwise make sure that the socket is closed properly
+          req->buffer = nullptr; //done with the request buffer
+          break;
         }
-        req->buffer = nullptr; //done with the request buffer
-        break;
-      }
-      case event_type::READ: { //used for reading over TLS
-        auto &client = clients[req->client_idx];
-        if(cqe->res > 0 && client.id != req->ID){
+        case event_type::READ: { //used for reading over TLS
+          auto &client = clients[req->client_idx];
           int to_read_amount = cqe->res; //the default read size
           if(client.recv_data.size()) { //will correctly deal with needing to call wolfSSL_read multiple times
             auto &vec_member = client.recv_data;
@@ -187,20 +191,17 @@ void server<server_type::TLS>::server_loop(){
           if(total_read == 0) add_read_req(req->client_idx, event_type::READ); //total_read of 0 implies that data must be read into the recv_data buffer
           
           if(total_read > 0){
-           if(read_cb != nullptr) read_cb(req->client_idx, &buffer[0], total_read, this, custom_obj);
+            if(read_cb != nullptr) read_cb(req->client_idx, &buffer[0], total_read, this, custom_obj);
             if(!client.recv_data.size())
               client.recv_data = {};
           }
-        }else{
-          close_connection(req->client_idx);
+          break;
         }
-        break;
       }
     }
 
     //free any malloc'd data
-    if(req)
-      free(req->buffer);
+    free(req->buffer);
     free(req);
 
     io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen

@@ -1,37 +1,29 @@
 #include "../header/server.h"
 #include "../header/utility.h"
 
-
-/*
-
-Set the fd using wolfSSL to the client index rather than the actual fd
-
-Also maybe you don't need t check if the connection is active here, if you check it's active wherever you call wolfSSL_send or wolfSSL_recv from
-
-*/
-
-
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, and returns how much was written from the send_data map, if appropriate
   int client_idx = wolfSSL_get_fd(ssl);
   auto *tcp_server = (server<server_type::TLS>*)ctx;
   auto &client = tcp_server->clients[client_idx];
+  // std::cout << "WANT TO WRITE: " << sz << " ## LAST WROTE: " << client.accept_last_written << "\n";
 
-  if(tcp_server->active_connections.count(client_idx) && client.send_data.size() > 0){ //as long as the client is definitely active, then send data if there is any
-    if(client.send_data.front().last_written == -1){
+  if(tcp_server->active_connections.count(client_idx)){ //as long as the client is definitely active
+    auto &current = client.send_data.front();
+    if(current.last_written == -1){
       tcp_server->add_write_req(client_idx, event_type::WRITE, buff, sz);
       return WOLFSSL_CBIO_ERR_WANT_WRITE;
     }else{
-      const auto written = client.send_data.front().last_written;
-      client.send_data.front().last_written = -1;
+      const auto written = current.last_written;
+      current.last_written = -1;
       return written;
     }
   }else{
-    if(!client.accept_last_written){
+    if(client.accept_last_written == -1){
       tcp_server->add_write_req(client_idx, event_type::ACCEPT_WRITE, buff, sz);
       return WOLFSSL_CBIO_ERR_WANT_WRITE;
     }else{
       const auto written = client.accept_last_written;
-      client.accept_last_written = 0;
+      client.accept_last_written = -1;
       return written;
     }
   }
@@ -50,7 +42,8 @@ int tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *
     remove_first_n_elements(data, sz);
     return sz;
   }else if(recvd_amount < sz){ //if there isn't enough data available for the full request (too little)
-    if(accept)
+    std::cout << "\t\t\twell well well if it aint the usual suspect\n";
+    if(accept) //we only send read requests via wolfSSL for the TLS negotiation bit
       tcp_server->add_read_req(client_idx, event_type::ACCEPT_READ);
     return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
   }else{ //just right
@@ -65,15 +58,20 @@ int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
   auto *tcp_server = (server<server_type::TLS>*)ctx;
   auto &client = tcp_server->clients[client_idx];
 
-  if(tcp_server->active_connections.count(client_idx) && client.recv_data.size() > 0){
-    return tls_recv_helper(tcp_server, client_idx, buff, sz, false);
+  if(tcp_server->active_connections.count(client_idx)){ //only active once TLS negotiations are finished
+    if(client.recv_data.size()) //if the amount to send is non-zero, then we can return however much we read
+      return tls_recv_helper(tcp_server, client_idx, buff, sz, false);
+
+    std::cout << "adding read req of this many bytes: " << sz << "\n";
+    tcp_server->add_read_req(client_idx, event_type::READ); //otherwise we've gotta read stuff
+    return WOLFSSL_CBIO_ERR_WANT_READ;
   }else{
     if(client.recv_data.size() > 0){ //if an entry exists in the map, use the data in it, otherwise make a request for it
       return tls_recv_helper(tcp_server, client_idx, buff, sz, true);
     }else{
-      // std::cout << "what a surprise 2....\n";
+      std::cout << "adding read req of this many bytes (accept): " << sz << "\n";
       tcp_server->add_read_req(client_idx, event_type::ACCEPT_READ);
       return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
-    } 
+    }
   }
 }

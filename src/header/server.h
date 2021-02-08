@@ -79,7 +79,7 @@ struct client<server_type::NON_TLS>: client_base {};
 template<>
 struct client<server_type::TLS>: client_base {
     WOLFSSL *ssl = nullptr;
-    int accept_last_written{};
+    int accept_last_written = -1;
     std::vector<char> recv_data{};
 };
 

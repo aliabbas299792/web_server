@@ -15,15 +15,16 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
     index = freed_indexes.front();
     freed_indexes.pop();
 
-    auto &client = clients[index];
+    auto &freed_client = clients[index];
 
-    client.id = (client.id + 1) % 100; //ID loops every 100
+    const auto new_id = (freed_client.id + 1) % 100; //ID loops every 100
+    freed_client = client<T>();
+    freed_client.id = new_id;
   }else{
     clients.push_back(client<T>()); //otherwise give a new one
     index = clients.size()-1;
   }
   
-  active_connections.insert(index);
   clients[index].sockfd = client_socket;
 
   return index;
