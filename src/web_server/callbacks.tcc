@@ -15,8 +15,6 @@ void r_cb(int client_idx, char *buffer, unsigned int length, ulong custom_info, 
 
   const auto ws_client_idx = (int32_t)custom_info;
 
-  std::cout << ws_client_idx << " is ws_client_idx\n";
-
   if(basic_web_server->is_valid_http_req(buffer, length)){ //if not a valid HTTP req, then probably a websocket frame
     std::vector<std::string> headers;
 

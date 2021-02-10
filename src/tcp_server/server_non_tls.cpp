@@ -82,7 +82,6 @@ void server<server_type::NON_TLS>::server_loop(){
         break;
       }
       case event_type::READ: {
-        std::cout << clients[req->client_idx].custom_info << "\n";
         if(cqe->res > 0)
           if(read_cb != nullptr) read_cb(req->client_idx, req->buffer, cqe->res, clients[req->client_idx].custom_info, this, custom_obj);
         else

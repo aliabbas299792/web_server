@@ -5,7 +5,6 @@ int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, send
   int client_idx = wolfSSL_get_fd(ssl);
   auto *tcp_server = (server<server_type::TLS>*)ctx;
   auto &client = tcp_server->clients[client_idx];
-  // std::cout << "WANT TO WRITE: " << sz << " ## LAST WROTE: " << client.accept_last_written << "\n";
 
   if(tcp_server->active_connections.count(client_idx)){ //as long as the client is definitely active
     auto &current = client.send_data.front();

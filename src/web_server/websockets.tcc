@@ -14,7 +14,7 @@ void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_ke
   std::memcpy(&send_buffer[0], resp.c_str(), resp.size());
 
   int ws_client_idx = new_ws_client(client_idx); //sets this index up as a new client
-  std::cout << "connection made idx " << ws_client_idx << std::endl;
+  
   tcp_server->write_connection(client_idx, std::move(send_buffer), ws_client_idx);
 }
 
@@ -77,8 +77,6 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
         client_data.closing_state++;
         //we're going to close immediately after, so make sure the program knows there is this write op happening
         closed = close_ws_connection_req(ws_client_idx);
-
-        std::cout << "gonna respond to idx " << ws_client_idx << std::endl;
       }
 
       if(closed)
@@ -258,7 +256,6 @@ std::pair<int, std::vector<std::vector<uchar>>> web_server<T>::get_ws_frames(cha
 
     if(pending_item->length == -1){ //assuming the received buffer and the pending buffer are at least 10 bytes long
       if(pending_item->buffer.size() + length < 10){
-        // std::cout << "super small read...\n";
         close_ws_connection_req(ws_client_idx); //doesn't deal with such small reads - just close the connection
         return {-1, {}};
       }else{
