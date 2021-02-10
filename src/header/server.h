@@ -45,10 +45,10 @@ template<server_type T>
 using accept_callback = void (*)(int client_idx, server<T> *tcp_server, void *custom_obj);
 
 template<server_type T>
-using read_callback = void(*)(int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj);
+using read_callback = void(*)(int client_idx, char* buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj);
 
 template<server_type T>
-using write_callback = void(*)(int client_idx, bool error, server<T> *tcp_server, void *custom_obj);
+using write_callback = void(*)(int client_idx, ulong custom_info, server<T> *tcp_server, void *custom_obj);
 
 struct request {
   event_type event;
@@ -66,9 +66,10 @@ struct write_data {
 };
 
 struct client_base {
-    int id{};
-    int sockfd{};
-    std::queue<write_data> send_data{};
+  int id{};
+  int sockfd{};
+  std::queue<write_data> send_data{};
+  ulong custom_info = -1; //default custom_info is -1
 };
 
 template<server_type T>
@@ -114,7 +115,7 @@ class server_base {
   public:
     void start(); //function to start the server
 
-    void read_connection(int client_idx);
+    void read_connection(int client_idx, ulong custom_info = 0);
 };
 
 template<>
@@ -132,7 +133,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
       void *custom_obj = nullptr
     );
 
-    void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
+    void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
@@ -159,7 +160,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       void *custom_obj = nullptr
     );
 
-    void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
+    void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 

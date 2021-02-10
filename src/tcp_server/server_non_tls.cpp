@@ -18,8 +18,9 @@ server<server_type::NON_TLS>::server(
   this->listener_fd = setup_listener(listen_port); //setup the listener socket
 }
 
-void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff) {
+void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info) {
   auto *client = &clients[client_idx];
+  client->custom_info = custom_info;
   client->send_data.push(write_data(std::move(buff)));
   if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
     const auto data_ref = client->send_data.front();
@@ -28,11 +29,12 @@ void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<
 }
 
 void server<server_type::NON_TLS>::close_connection(int client_idx) {
-  auto *client = &clients[client_idx];
+  auto &client = clients[client_idx];
 
   active_connections.erase(client_idx);
+  client.send_data = {}; //free up all the data we might have wanted to send
 
-  close(client->sockfd);
+  close(client.sockfd);
 
   freed_indexes.insert(client_idx);
 }
@@ -80,37 +82,36 @@ void server<server_type::NON_TLS>::server_loop(){
         break;
       }
       case event_type::READ: {
+        std::cout << clients[req->client_idx].custom_info << "\n";
         if(cqe->res > 0)
-          if(read_cb != nullptr) read_cb(req->client_idx, req->buffer, cqe->res, this, custom_obj);
+          if(read_cb != nullptr) read_cb(req->client_idx, req->buffer, cqe->res, clients[req->client_idx].custom_info, this, custom_obj);
         else
           close_connection(req->client_idx);
         break;
       }
       case event_type::WRITE: {
-        bool error = false;
         if(cqe->res < 0 || clients[req->client_idx].id != req->ID) { //if the ID is different then it means the connection has been freed already
-          error = true;
           close_connection(req->client_idx);
         }else{
-          error = false;
+          auto &client = clients[req->client_idx];
           if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
             int rc = add_write_req_continued(req, cqe->res);
             req = nullptr; //we don't want to free the req yet
             if(rc == 0) break;
           }
-          if(active_connections.count(req->client_idx) && clients[req->client_idx].id == req->ID){
+          if(active_connections.count(req->client_idx) && client.id == req->ID){
             //the above will check specifically if the client is still valid, since in the case that
             //a new client joins immediately after old one leaves, they might get the same clients
             //array index, but the ID's would be different
-            auto *queue_ptr = &clients[req->client_idx].send_data;
+            auto *queue_ptr = &client.send_data;
             queue_ptr->pop(); //remove the last processed item
             if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
-              const auto *buff = &queue_ptr->front().buff;
-              add_write_req(req->client_idx, event_type::WRITE, (char*)&buff[0], buff->size()); //adds a plain HTTP write request
+              const auto &data = queue_ptr->front();
+              add_write_req(req->client_idx, event_type::WRITE, (char*)&data.buff[0], data.buff.size()); //adds a plain HTTP write request
             }
           }
+          if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj); //call the write callback
         }
-        if(write_cb != nullptr) write_cb(req->client_idx, error, this, custom_obj); //call the write callback
         req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
         break;
       }

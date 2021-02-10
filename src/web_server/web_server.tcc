@@ -1,11 +1,24 @@
 #include "../header/web_server.h"
 #include "../header/utility.h"
 
-web_server::web_server(){
+template<server_type T>
+web_server<T>::web_server(){
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
 }
 
-std::string web_server::get_content_type(std::string filepath){
+template<server_type T>
+bool web_server<T>::is_valid_http_req(const char* buff, int length){
+  if(length < 16) return false; //minimum size for valid HTTP request is 16 bytes
+  const char *types[] = { "GET ", "POST ", "PUT ", "DELETE ", "PATCH " };
+  u_char valid = 0x1f;
+  for(int i = 0; i < 7; i++) //length of "DELETE " is 7 characters
+    for(int j = 0; j < 5; j++) //5 different types
+      if(i < strlen(types[j]) && (valid >> j) & 0x1 && types[j][i] != buff[i]) valid &= 0x1f ^ (1 << j);
+  return valid;
+}
+
+template<server_type T>
+std::string web_server<T>::get_content_type(std::string filepath){
   char *file_extension_data = (char*)filepath.c_str();
   std::string file_extension = "";
   char *saveptr = nullptr;
@@ -37,7 +50,8 @@ std::string web_server::get_content_type(std::string filepath){
   return "Content-Type: application/octet-stream\r\n";
 }
 
-int web_server::read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes){
+template<server_type T>
+int web_server<T>::read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes){
   int file_fd = open(filepath.c_str(), O_RDONLY);
   if(file_fd < 0) return -1;
 
@@ -64,7 +78,8 @@ int web_server::read_file(std::string filepath, std::vector<char>& buffer, int r
   return size;
 }
 
-std::vector<char> web_server::read_file_web(std::string filepath, int responseCode, bool accept_bytes){
+template<server_type T>
+std::vector<char> web_server<T>::read_file_web(std::string filepath, int responseCode, bool accept_bytes){
   auto header_first_line = "";
   
   switch(responseCode){

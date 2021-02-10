@@ -42,7 +42,6 @@ int tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *
     remove_first_n_elements(data, sz);
     return sz;
   }else if(recvd_amount < sz){ //if there isn't enough data available for the full request (too little)
-    std::cout << "\t\t\twell well well if it aint the usual suspect\n";
     if(accept) //we only send read requests via wolfSSL for the TLS negotiation bit
       tcp_server->add_read_req(client_idx, event_type::ACCEPT_READ);
     return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
@@ -62,14 +61,12 @@ int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
     if(client.recv_data.size()) //if the amount to send is non-zero, then we can return however much we read
       return tls_recv_helper(tcp_server, client_idx, buff, sz, false);
 
-    std::cout << "adding read req of this many bytes: " << sz << "\n";
     tcp_server->add_read_req(client_idx, event_type::READ); //otherwise we've gotta read stuff
     return WOLFSSL_CBIO_ERR_WANT_READ;
   }else{
     if(client.recv_data.size() > 0){ //if an entry exists in the map, use the data in it, otherwise make a request for it
       return tls_recv_helper(tcp_server, client_idx, buff, sz, true);
     }else{
-      std::cout << "adding read req of this many bytes (accept): " << sz << "\n";
       tcp_server->add_read_req(client_idx, event_type::ACCEPT_READ);
       return WOLFSSL_CBIO_ERR_WANT_READ; //if there was no data to be read currently, send a request for more data, and respond with this error
     }
