@@ -67,6 +67,12 @@ void server<server_type::NON_TLS>::server_loop(){
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
+
+    // std::cout << "Active connections: ";
+    // for(const auto &connection : active_connections){
+    //   std::cout << connection << " ";
+    // }
+    // std::cout << "\n";
     
     switch(req->event){
       case event_type::ACCEPT: {
@@ -117,6 +123,9 @@ void server<server_type::NON_TLS>::server_loop(){
     }
 
     //free any malloc'd data
+    // if(req)
+    //   CUSTOM_FREE(req->buffer);
+    // CUSTOM_FREE(req);
     if(req)
       free(req->buffer);
     free(req);

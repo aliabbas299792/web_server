@@ -30,5 +30,5 @@ TCC files aren't compiled directly, they are included in header files.
 You can attach `custom_info` to a client using `read_connection` or `write_connection`, this modifies the member variable immediately, order of change doesn't matter, it always defaults to 0, so provide it if you need it.
 
 TODO:
- - Add in 'garbage collector', something which prunes dead connections
+ - Run the TLS server for a while and test with lots of data, there might be a memory leak, but can't really find it
  - For websocket, use the autobahn test suite at some point when you want to make it more conforming, very handy to test the web server

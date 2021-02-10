@@ -58,23 +58,22 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
         }else if(processed_data.first == 2){ //ping opcode
           std::string body_data((const char*)&processed_data.second[0], processed_data.second.size());
           auto data = make_ws_frame(body_data, websocket_non_control_opcodes::pong);
-          tcp_server->write_connection(client_idx, std::move(data), ws_client_idx);
+          websocket_write(ws_client_idx, std::move(data));
         }
       }
 
       if(frame_contents.size() > 0){
         //this is where you'd deal with websocket connections
         std::string str = "";
-        for(int i = 0; i < 1024*1024; i++){
+        for(int i = 0; i < 1024*1024*20; i++){
           str += "A";
         }
 
         str += " ... hello world.";
 
         auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-        tcp_server->write_connection(client_idx, std::move(data), ws_client_idx);
+        websocket_write(ws_client_idx, std::move(data));
 
-        client_data.closing_state++;
         //we're going to close immediately after, so make sure the program knows there is this write op happening
         closed = close_ws_connection_req(ws_client_idx);
       }
@@ -90,11 +89,19 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
 
 template<server_type T>
 bool web_server<T>::websocket_process_write_cb(int ws_client_idx){
-  if(all_websocket_connections.count(ws_client_idx) && websocket_clients[ws_client_idx].closing_state){
-    close_ws_connection_confirm(ws_client_idx);
+  if(all_websocket_connections.count(ws_client_idx)){
+    if(websocket_clients[ws_client_idx].closing_state)
+      close_ws_connection_confirm(ws_client_idx);
     return true;
   }
   return false;
+}
+
+template<server_type T>
+void web_server<T>::websocket_write(int ws_client_idx, std::vector<char> &&buff){
+  auto &client_data = websocket_clients[ws_client_idx];
+  client_data.closing_state++;
+  tcp_server->write_connection(client_data.client_idx, std::move(buff), ws_client_idx);
 }
 
 template<server_type T>

@@ -1,5 +1,19 @@
 #include "../header/utility.h"
 
+#include <malloc.h>
+
+// size_t global_malloced = 0; //extern global for debugging
+
+// void *CUSTOM_MALLOC(size_t num){
+//   global_malloced += num;
+//   return std::malloc(num);
+// }
+
+// void CUSTOM_FREE(void *ptr){
+//   global_malloced -= malloc_usable_size(ptr);
+//   free(ptr);
+// }
+
 void fatal_error(std::string error_message){
   perror(std::string("Fatal Error: " + error_message).c_str());
   exit(1);

@@ -64,7 +64,7 @@ void w_cb(int client_idx, ulong custom_info, server<T> *tcp_or_tls_server, void 
   const auto basic_web_server = (web_server<T>*)custom_obj;
   const auto ws_client_idx = (int32_t)custom_info;
 
-  if(!basic_web_server->websocket_process_write_cb(ws_client_idx)){ 
+  if(basic_web_server->websocket_process_write_cb(ws_client_idx)){ 
     //if this is a websocket that is in the process of closing, it will let it close and then exit the function, otherwise we read from the function
     tcp_or_tls_server->read_connection(client_idx, ws_client_idx);
   }else{

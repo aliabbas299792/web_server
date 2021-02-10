@@ -85,6 +85,7 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
   io_uring_prep_accept(sqe, listener_fd, (sockaddr*)client_address, client_address_length, 0); //no flags set, prepares an SQE
 
   request *req = (request*)std::malloc(sizeof(request));
+  // request *req = (request*)CUSTOM_MALLOC(sizeof(request));
   req->event = event_type::ACCEPT;
 
   io_uring_sqe_set_data(sqe, req); //sets the SQE data
@@ -98,6 +99,8 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
+  // request *req = (request*)CUSTOM_MALLOC(sizeof(request)); //enough space for the request struct
+  // req->buffer = (char*)CUSTOM_MALLOC(READ_SIZE); //malloc enough space for the data to be read
   req->total_length = READ_SIZE;;
   req->event = event;
   req->client_idx = client_idx;
@@ -113,6 +116,7 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
 
 template<server_type T>
 int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
+  // request *req = (request*)CUSTOM_MALLOC(sizeof(request));
   request *req = (request*)std::malloc(sizeof(request));
   std::memset(req, 0, sizeof(request));
   req->client_idx = client_idx;

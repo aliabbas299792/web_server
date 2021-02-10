@@ -47,6 +47,7 @@ class web_server{
   int new_ws_client(int client_idx);
   bool close_ws_connection_req(int ws_client_idx, bool client_already_closed = false);
   bool close_ws_connection_confirm(int ws_client_idx);
+  void websocket_write(int ws_client_idx, std::vector<char> &&buff);
 public:
   web_server();
 

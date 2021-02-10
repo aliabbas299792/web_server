@@ -2,15 +2,15 @@
 #include "../header/utility.h"
 
 void server<server_type::TLS>::close_connection(int client_idx) {
-  auto &client = clients[client_idx];
-  wolfSSL_shutdown(client.ssl);
-  wolfSSL_free(client.ssl);
+  auto &client_ = clients[client_idx];
+  wolfSSL_shutdown(client_.ssl);
+  wolfSSL_free(client_.ssl);
 
-  close(client.sockfd);
+  close(client_.sockfd);
 
-  client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
+  client_.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
   active_connections.erase(client_idx);
-  client.send_data = {}; //free up all the data we might have wanted to send
+  client_.send_data = {}; //free up all the data we might have wanted to send
 
   freed_indexes.insert(client_idx);
 }
@@ -93,6 +93,24 @@ void server<server_type::TLS>::server_loop(){
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
+
+      // std::cout << "Active connections: ";
+      // for(const auto &connection : active_connections){
+      //   std::cout << connection << " ";
+      // }
+      // std::cout << "\n";
+
+      // size_t buffered{};
+      // for(auto &client : clients){
+      //   std::queue<write_data> temp_queue = client.send_data;
+      //   while(!temp_queue.empty()){
+      //     buffered += temp_queue.front().buff.size();
+      //     temp_queue.pop();
+      //   }
+      //   buffered += client.recv_data.size();
+      // }
+      // std::cout << "\tcurrently buffered: " << buffered << std::endl;
+      // std::cout << "\tmallocd: " << global_malloced << "\n";
 
     if(req->event != event_type::ACCEPT && (cqe->res <= 0 || clients[req->client_idx].id != req->ID)){
       if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
@@ -194,6 +212,8 @@ void server<server_type::TLS>::server_loop(){
     }
 
     //free any malloc'd data
+    // CUSTOM_FREE(req->buffer);
+    // CUSTOM_FREE(req);
     free(req->buffer);
     free(req);
 
