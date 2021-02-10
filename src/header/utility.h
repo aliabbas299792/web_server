@@ -16,6 +16,7 @@
 
 typedef struct stat stat_struct;
 
+// extern std::unordered_map<uint64_t, size_t> malloc_sizes;
 // extern size_t global_malloced;
 
 // void *CUSTOM_MALLOC(size_t num);
