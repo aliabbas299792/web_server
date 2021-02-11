@@ -59,9 +59,7 @@ server<server_type::TLS>::server(
   wolfSSL_CTX_SetIOSend(wolfssl_ctx, tls_send);
 
   std::cout << "TLS will be used\n";
-  
-  std::memset(&ring, 0, sizeof(io_uring));
-  io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
+
   this->listener_fd = setup_listener(listen_port); //setup the listener socket
 }
 

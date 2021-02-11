@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <set> //ordered set for freed indexes, I believe it is sorted in ascending order which is exactly what we want
 #include <chrono>
+#include <mutex>
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
 constexpr int READ_SIZE = 8192; //how much one read request should read
@@ -93,6 +94,11 @@ class server_base {
     read_callback<T> read_cb = nullptr;
     write_callback<T> write_cb = nullptr;
 
+    static std::mutex init_mutex;
+    static int shared_ring_fd; //pointer to a single io_uring ring fd, who's async backend is shared
+    static int current_max_id; //max id of thread
+
+    int thread_id = -1;
     io_uring ring;
     void *custom_obj; //it can be anything
 
@@ -109,10 +115,12 @@ class server_base {
     int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
+
+    void register_eventfd(int eventfd); //registers an eventfd
     
     int setup_client(int client_idx);
-  private:
   public:
+    server_base();
     void start(); //function to start the server
 
     void read_connection(int client_idx, ulong custom_info = 0);

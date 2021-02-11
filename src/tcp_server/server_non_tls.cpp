@@ -13,8 +13,6 @@ server<server_type::NON_TLS>::server(
   this->write_cb = w_cb;
   this->custom_obj = custom_obj;
 
-  std::memset(&ring, 0, sizeof(io_uring));
-  io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
   this->listener_fd = setup_listener(listen_port); //setup the listener socket
 }
 

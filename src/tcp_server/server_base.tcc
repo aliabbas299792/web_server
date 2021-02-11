@@ -1,10 +1,37 @@
 #include "../header/server.h"
 #include "../header/utility.h"
 
+//initialise static members
+template<server_type T>
+std::mutex server_base<T>::init_mutex{};
+template<server_type T>
+int server_base<T>::shared_ring_fd = -1;
+template<server_type T>
+int server_base<T>::current_max_id = 0;
+
 template<server_type T>
 void server_base<T>::start(){ //function to run the server
   std::cout << "Running server\n";
   if(!running_server) static_cast<server<T>*>(this)->server_loop();
+}
+
+template<server_type T>
+server_base<T>::server_base(){
+  std::unique_lock<std::mutex> init_lock(init_mutex);
+
+  if(shared_ring_fd == -1){
+    std::memset(&ring, 0, sizeof(io_uring));
+    io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
+    shared_ring_fd = ring.ring_fd;
+  }else{ //all subsequent threads therefore share the same backend
+    std::memset(&ring, 0, sizeof(io_uring));
+    io_uring_params params{};
+    params.wq_fd = shared_ring_fd;
+    params.flags = IORING_SETUP_ATTACH_WQ;
+    io_uring_queue_init_params(QUEUE_DEPTH, &ring, &params);
+  }
+  
+  thread_id = ++current_max_id;
 }
 
 template<server_type T>
