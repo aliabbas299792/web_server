@@ -32,3 +32,25 @@ You can attach `custom_info` to a client using `read_connection` or `write_conne
 TODO:
  - Run the TLS server for a while and test with lots of data, there might be a memory leak, but can't really find it
  - For websocket, use the autobahn test suite at some point when you want to make it more conforming, very handy to test the web server
+
+ Simple JS function to get stats from ws_test_output.txt:
+ ```js
+const mean = arr => arr.reduce((sum, curr) => sum += curr, 0)/arr.length
+
+const std_dev = arr => {
+    const mean_val = mean(arr)
+    const variance = arr.reduce((sum, curr) => sum += Math.pow(curr - mean_val, 2), 0)/(arr.length - 1)
+    return Math.sqrt(variance)
+}
+
+function get_stats(input){
+  const befores = input.match(/Before:[ ]+total kB[ ]+\d+/g).map(item => parseInt([...item.match(/[ ]+(\d+)/)][1]));
+  const afters = input.match(/After:[ ]+total kB[ ]+\d+/g).map(item => parseInt([...item.match(/[ ]+(\d+)/)][1]));
+
+  const befores_stats = [ mean(befores), std_dev(befores) ];
+  const afters_stats = [ mean(afters), std_dev(afters) ];
+  
+  console.log("Befores:\n" + "\tMean: " + befores_stats[0] + "\n\tStandard dev: " + befores_stats[1]);
+  console.log("Afters:\n" + "\tMean: " + afters_stats[0] + "\n\tStandard dev: " + afters_stats[1]);
+}
+```

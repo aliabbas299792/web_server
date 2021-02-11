@@ -1,0 +1,3129 @@
+First column is the one that matters, memory usage in kB before opening any clients, and after
+
+Before:     total kB            9824    5352     444
+After:      total kB          777992  773660  768540
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          399144  394812  389692
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          419624  415292  410172
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          419624  415292  410172
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          419624  415292  410172
+
+Before:     total kB          173864  169660  164540
+After:      total kB          603944  599612  594492
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          399144  394812  389692
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          624424  620092  614972
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          419624  415292  410172
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          378664  374332  369212
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          399144  394812  389692
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          460584  456380  451260
+After:      total kB          399144  394812  389692
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          603944  599612  594492
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          603944  599612  594492
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          399144  394812  389692
+
+Before:     total kB          173864  169660  164540
+After:      total kB          440104  435772  430652
+
+Before:     total kB          173864  169660  164540
+After:      total kB          378664  374332  369212
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  535700  530580
+
+Before:     total kB          173864  169660  164540
+After:      total kB          583464  579132  574012
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          562984  558652  553532
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          501544  497212  492092
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          624424  620092  614972
+
+Before:     total kB          173864  169660  164540
+After:      total kB          522024  517692  512572
+
+Before:     total kB          173864  169660  164540
+After:      total kB          481064  476732  471612
+
+Before:     total kB          173864  169660  164540
+After:      total kB          542504  538172  533052
+
+Before:     total kB          173864  169660  164540
+After:      total kB          419624  415292  410172
+
+Before:     total kB          173864  169660  164540
+After:      total kB          460584  456252  451132
+
+Before:     total kB          173864  169660  164540
+First column is the one that matters, memory usage in kB before opening any clients, and after
+
+Before:     total kB            9824    5420     444
+After:      total kB          675548  671348  666096
+
+Before:     total kB          153460  149388  144136
+After:      total kB          542580  538380  533128
+
+Before:     total kB          153460  149388  144136
+After:      total kB          419700  415500  410248
+
+Before:     total kB          153460  149388  144136
+After:      total kB          378740  374540  369288
+
+Before:     total kB          153460  149388  144136
+After:      total kB          501620  497420  492168
+
+Before:     total kB          153460  149388  144136
+After:      total kB          542580  538380  533128
+
+Before:     total kB          153460  149388  144136
+After:      total kB          460660  456460  451208
+
+Before:     total kB          296820  292748  287496
+After:      total kB          501620  497420  492168
+
+Before:     total kB          153460  149388  144136
+After:      total kB          583540  579340  574088
+
+Before:     total kB          153460  149388  144136
+After:      total kB          501620  497420  492168
+
+Before:     total kB          153460  149388  144136
+After:      total kB          481140  476940  471688
+
+Before:     total kB          153460  149388  144136
+After:      total kB          563060  558860  553608
+
+Before:     total kB          153460  149388  144136
+After:      total kB          419700  415500  410248
+
+Before:     total kB          153460  149388  144136
+After:      total kB          481140  476940  471688
+
+Before:     total kB          153460  149388  144136
+After:      total kB          481140  476940  471688
+
+Before:     total kB          153460  149388  144136
+After:      total kB          481140  476940  471688
+
+Before:     total kB          153460  149388  144136
+After:      total kB          460660  456460  451208
+
+Before:     total kB          153460  149388  144136
+After:      total kB          460660  456460  451208
+
+Before:     total kB          153460  149388  144136
+After:      total kB          583540  579340  574088
+
+Before:     total kB          153460  149388  144136
+After:      total kB          542580  538380  533128
+
+Before:     total kB          153460  149388  144136
+After:      total kB          440180  435980  430728
+
+Before:     total kB          153460  149388  144136
+After:      total kB          460660  456460  451208
+
+Before:     total kB          153460  149388  144136
+After:      total kB          501620  497420  492168
+
+Before:     total kB          153460  149388  144136
+After:      total kB          440180  435980  430728
+
+Before:     total kB          153460  149388  144136
+After:      total kB          440180  435980  430728
+
+Before:     total kB          153460  149388  144136
+After:      total kB          399220  395020  389768
+
+Before:     total kB          153460  149388  144136
+After:      total kB          481140  476940  471688
+
+Before:     total kB          153460  149388  144136
+After:      total kB          378740  374540  369288
+
+Before:     total kB          153460  149388  144136
+After:      total kB          460660  456460  451208
+
+Before:     total kB          153460  149388  144136
+After:      total kB          522100  517900  512648
+
+Before:     total kB          153460  149388  144136
+After:      total kB          399220  395020  389768
+
+Before:     total kB          173940  169868  164616
+After:      total kB          440180  435980  430728
+
+Before:     total kB          153460  149388  144136
+After:      total kB          542580  538380  533128
+
+Before:     total kB          153460  149388  144136
+After:      total kB          460660  456460  451208
+
+Before:     total kB          153460  149388  144136
+After:      total kB          542580  538380  533128
+
+Before:     total kB          153460  149388  144136
+After:      total kB          399220  395020  389768
+
+Before:     total kB          153460  149388  144136
+First column is the one that matters, memory usage in kB before opening any clients, and after
+
+Before:     total kB            9824    5444     444
+After:      total kB          726796  722604  717344
+
+Before:     total kB          194468  190404  185144
+After:      total kB          460708  446280  441020
+
+Before:     total kB          102308   98244   92984
+After:      total kB          563108  548684  543424
+
+Before:     total kB          102308   98244   92984
+After:      total kB          583588  569164  563904
+
+Before:     total kB          440228  425932  420672
+After:      total kB          481188  466764  461504
+
+Before:     total kB          102308   98244   92984
+After:      total kB          665508  651084  645824
+
+Before:     total kB          102308   98244   92984
+After:      total kB          440228  425804  420544
+
+Before:     total kB          102308   98244   92984
+After:      total kB          501668  487244  481984
+
+Before:     total kB          102308   98244   92984
+After:      total kB          604068  589644  584384
+
+Before:     total kB          102308   98244   92984
+After:      total kB          542628  528204  522944
+
+Before:     total kB          102308   98244   92984
+After:      total kB          522148  507724  502464
+
+Before:     total kB          102308   98244   92984
+After:      total kB          399268  384844  379584
+
+Before:     total kB          102308   98244   92984
+After:      total kB          501668  487244  481984
+
+Before:     total kB          102308   98244   92984
+After:      total kB          542628  528204  522944
+
+Before:     total kB          102308   98244   92984
+After:      total kB          522148  507724  502464
+
+Before:     total kB          102308   98244   92984
+After:      total kB          399268  384844  379584
+
+Before:     total kB          102308   98244   92984
+After:      total kB          583588  569164  563904
+
+Before:     total kB          102308   98244   92984
+After:      total kB          419748  405324  400064
+
+Before:     total kB          102308   98244   92984
+After:      total kB          501668  487244  481984
+
+Before:     total kB          102308   98244   92984
+After:      total kB          440228  425804  420544
+
+Before:     total kB          102308   98244   92984
+After:      total kB          501668  487244  481984
+
+Before:     total kB          102308   98244   92984
+After:      total kB          542628  528204  522944
+
+Before:     total kB          102308   98244   92984
+After:      total kB          501668  487244  481984
+
+Before:     total kB          102308   98244   92984
+After:      total kB          604068  589644  584384
+
+Before:     total kB          102308   98244   92984
+First column is the one that matters, memory usage in kB before opening any clients, and after
+
+Before:     total kB            9824    5360     444
+After:      total kB          716508  712248  707056
+
+Before:     total kB          194272  190140  184948
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          419556  415296  410104
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          603876  599616  594424
+
+Before:     total kB          173792  169660  164468
+After:      total kB          419556  415296  410104
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          603876  599616  594424
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          378596  374336  369144
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          419556  415296  410104
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  506412  501220
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          337636  333376  328184
+
+Before:     total kB          173792  169660  164468
+After:      total kB          317156  312896  307704
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          358116  353856  348664
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          644836  636360  631168
+
+Before:     total kB          173792  169660  164468
+After:      total kB          603876  599616  594424
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          624356  620096  614904
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          378596  374336  369144
+
+Before:     total kB          173792  169660  164468
+After:      total kB          440036  435776  430584
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          521956  517696  512504
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          583396  579136  573944
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          460516  456256  451064
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          542436  538176  532984
+
+Before:     total kB          173792  169660  164468
+After:      total kB          501476  497216  492024
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          480996  476736  471544
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+After:      total kB          562916  558656  553464
+
+Before:     total kB          173792  169660  164468
+After:      total kB          399076  394816  389624
+
+Before:     total kB          173792  169660  164468
+First column is the one that matters, memory usage in kB before opening any clients, and after
+
+Before:     total kB            9824    5392     448
+After:      total kB          788200  783960  778752
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          307164  303052  297844
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          389084  384844  379636
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          389084  384844  379636
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  479216  474008
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          511964  507852  502644
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  405324  400116
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          307164  303052  297844
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  454012  448804
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          409564  400752  395544
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          368604  364364  359156
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          327644  323532  318324
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          614364  610124  604916
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          430044  425804  420596
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          593884  589644  584436
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          532444  528204  522996
+
+Before:     total kB          266204  262092  256884
+After:      total kB          634844  630604  625396
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          450524  446284  441076
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          573404  569164  563956
+
+Before:     total kB          266204  262092  256884
+After:      total kB          389084  384844  379636
+
+Before:     total kB          266204  262092  256884
+After:      total kB          511964  507724  502516
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          552924  548684  543476
+
+Before:     total kB          266204  262092  256884
+After:      total kB          471004  466764  461556
+
+Before:     total kB          266204  262092  256884
+After:      total kB          491484  487244  482036
+
+Before:     total kB          266204  262092  256884
+First column is the one that matters, memory usage in kB before opening any clients, and after
+
+Before:     total kB            9824    5332     448
+After:      total kB          757468  753128  748020
+
+Before:     total kB          214912  210700  205592
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          378752  374412  369304
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          173952  169740  164632
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          378752  374412  369304
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          194432  190220  185112
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          378752  374412  369304
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          358272  353932  348824
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  448160  443052
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          644996  640656  635548
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  525136  520028
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          665476  661136  656028
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          624516  620176  615068
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          624516  620176  615068
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          665476  661136  656028
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          378752  374412  369304
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          235392  231180  226072
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          378752  374412  369304
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  596828  591720
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          317312  312972  307864
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          665476  655060  649952
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          358272  353932  348824
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          624516  620176  615068
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  511304  506196
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          604036  599696  594588
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          542596  538256  533148
+
+Before:     total kB          153472  149260  144152
+After:      total kB          358272  353932  348824
+
+Before:     total kB          153472  149260  144152
+After:      total kB          460672  456332  451224
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          358272  353932  348824
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          440192  435852  430744
+
+Before:     total kB          153472  149260  144152
+After:      total kB          583556  579216  574108
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          419712  415372  410264
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          501636  497296  492188
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          522116  517776  512668
+
+Before:     total kB          153472  149260  144152
+After:      total kB          481156  476816  471708
+
+Before:     total kB          153472  149260  144152
+After:      total kB          563076  558736  553628
+
+Before:     total kB          153472  149260  144152
+After:      total kB          399232  394892  389784
+
+Before:     total kB          153472  149260  144152
