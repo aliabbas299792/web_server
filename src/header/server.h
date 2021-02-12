@@ -8,6 +8,7 @@
 
 #include <sys/syscall.h> //syscall stuff parameters (as in like __NR_io_uring_enter/__NR_io_uring_setup)
 #include <sys/mman.h> //for mmap
+#include <sys/eventfd.h>
 
 #include <liburing.h> //for liburing
 
@@ -28,7 +29,7 @@ constexpr int READ_SIZE = 8192; //how much one read request should read
 constexpr int QUEUE_DEPTH = 256; //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
 constexpr int READ_BLOCK_SIZE = 8192; //how much to read from a file at once
 
-enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE };
+enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE, EVENTFD };
 enum class server_type { TLS, NON_TLS };
 
 template<server_type T>
@@ -119,11 +120,15 @@ class server_base {
     void register_eventfd(int eventfd); //registers an eventfd
     
     int setup_client(int client_idx);
+
+    int event_fd = eventfd(0, 0); //used to awaken this thread for some event
+    void event_read(); //will set a read request for the eventfd
   public:
     server_base();
     void start(); //function to start the server
 
     void read_connection(int client_idx, ulong custom_info = 0);
+    void notify_event();
 };
 
 template<>

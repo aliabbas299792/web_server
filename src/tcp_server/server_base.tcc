@@ -16,6 +16,24 @@ void server_base<T>::start(){ //function to run the server
 }
 
 template<server_type T>
+void server_base<T>::notify_event(){
+  uint64_t write_data = 1;
+  write(event_fd, &write_data, sizeof(uint64_t));
+}
+
+template<server_type T>
+void server_base<T>::event_read(){
+  io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
+  request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
+  req->buffer = (char*)std::malloc(sizeof(uint64_t));
+  req->event = event_type::EVENTFD;
+  
+  io_uring_prep_read(sqe, event_fd, req->buffer, sizeof(uint64_t), 0); //don't read at an offset
+  io_uring_sqe_set_data(sqe, req);
+  io_uring_submit(&ring); //submits the event
+}
+
+template<server_type T>
 server_base<T>::server_base(){
   std::unique_lock<std::mutex> init_lock(init_mutex);
 
@@ -30,6 +48,9 @@ server_base<T>::server_base(){
     params.flags = IORING_SETUP_ATTACH_WQ;
     io_uring_queue_init_params(QUEUE_DEPTH, &ring, &params);
   }
+
+  io_uring_register_eventfd(&ring, event_fd);
+  event_read(); //sets a read request for the eventfd
   
   thread_id = ++current_max_id;
 }
@@ -112,7 +133,6 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
   io_uring_prep_accept(sqe, listener_fd, (sockaddr*)client_address, client_address_length, 0); //no flags set, prepares an SQE
 
   request *req = (request*)std::malloc(sizeof(request));
-  // request *req = (request*)CUSTOM_MALLOC(sizeof(request));
   req->event = event_type::ACCEPT;
 
   io_uring_sqe_set_data(sqe, req); //sets the SQE data
@@ -126,8 +146,6 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
-  // request *req = (request*)CUSTOM_MALLOC(sizeof(request)); //enough space for the request struct
-  // req->buffer = (char*)CUSTOM_MALLOC(READ_SIZE); //malloc enough space for the data to be read
   req->total_length = READ_SIZE;;
   req->event = event;
   req->client_idx = client_idx;
@@ -143,7 +161,6 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
 
 template<server_type T>
 int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
-  // request *req = (request*)CUSTOM_MALLOC(sizeof(request));
   request *req = (request*)std::malloc(sizeof(request));
   std::memset(req, 0, sizeof(request));
   req->client_idx = client_idx;

@@ -92,24 +92,6 @@ void server<server_type::TLS>::server_loop(){
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
 
-      // std::cout << "Active connections: ";
-      // for(const auto &connection : active_connections){
-      //   std::cout << connection << " ";
-      // }
-      // std::cout << "\n";
-
-      // size_t buffered{};
-      // for(auto &client : clients){
-      //   std::queue<write_data> temp_queue = client.send_data;
-      //   while(!temp_queue.empty()){
-      //     buffered += temp_queue.front().buff.size();
-      //     temp_queue.pop();
-      //   }
-      //   buffered += client.recv_data.size();
-      // }
-      // std::cout << "\tcurrently buffered: " << buffered << std::endl;
-      // std::cout << "\tmallocd: " << global_malloced << "\n";
-
     if(req->event != event_type::ACCEPT && (cqe->res <= 0 || clients[req->client_idx].id != req->ID)){
       if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
         req->buffer = nullptr; //done with the request buffer
@@ -208,10 +190,7 @@ void server<server_type::TLS>::server_loop(){
         }
       }
     }
-
-    //free any malloc'd data
-    // CUSTOM_FREE(req->buffer);
-    // CUSTOM_FREE(req);
+    
     free(req->buffer);
     free(req);
 

@@ -16,12 +16,6 @@
 
 typedef struct stat stat_struct;
 
-// extern std::unordered_map<uint64_t, size_t> malloc_sizes;
-// extern size_t global_malloced;
-
-// void *CUSTOM_MALLOC(size_t num);
-// void CUSTOM_FREE(void *ptr);
-
 void fatal_error(std::string error_message); //fatal error helper function
 long int get_file_size(int file_fd); //gets file size of the file descriptor passed in
 std::unordered_map<std::string, std::string> read_config(); //helper function to read the config file (.config)
@@ -52,9 +46,7 @@ void remove_first_n_elements(T *data, int length, T *&ret_buff, int num_elements
     std::memcpy(&data[0], &data[num_elements_to_remove], size - num_elements_to_remove);
   }
   char *temp_ptr = (T*)std::malloc(size - num_elements_to_remove);
-  // char *temp_ptr = (T*)CUSTOM_MALLOC(size - num_elements_to_remove);
   free(ret_buff);
-  // CUSTOM_FREE(ret_buff);
   ret_buff = temp_ptr;
   std::memcpy(ret_buff, data, size - num_elements_to_remove);
 }

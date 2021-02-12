@@ -47,7 +47,6 @@ int server<server_type::NON_TLS>::add_write_req_continued(request *req, int writ
   io_uring_prep_write(sqe, client.sockfd, &to_write.buff[req->written], req->total_length - req->written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
-
   return 0;
 }
 
@@ -66,11 +65,7 @@ void server<server_type::NON_TLS>::server_loop(){
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
 
-    // std::cout << "Active connections: ";
-    // for(const auto &connection : active_connections){
-    //   std::cout << connection << " ";
-    // }
-    // std::cout << "\n";
+    std::cout << "got an event\n";
     
     switch(req->event){
       case event_type::ACCEPT: {
@@ -118,12 +113,14 @@ void server<server_type::NON_TLS>::server_loop(){
         req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
         break;
       }
+      case event_type::EVENTFD: {
+        uint64_t event_data = 0;
+        eventfd_read(event_fd, &event_data);
+        std::cout << "EVENTFD thing\n";
+        event_read(); //must be called to add another read request for the eventfd
+      }
     }
 
-    //free any malloc'd data
-    // if(req)
-    //   CUSTOM_FREE(req->buffer);
-    // CUSTOM_FREE(req);
     if(req)
       free(req->buffer);
     free(req);

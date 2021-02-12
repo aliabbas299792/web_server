@@ -2,21 +2,6 @@
 
 #include <malloc.h>
 
-// std::unordered_map<uint64_t, size_t> malloc_sizes{};
-// size_t global_malloced = 0; //extern global for debugging
-
-// void *CUSTOM_MALLOC(size_t num){
-//   global_malloced += num;
-//   void *ptr = std::malloc(num);
-//   malloc_sizes[(uint64_t)ptr] = num;
-//   return ptr;
-// }
-
-// void CUSTOM_FREE(void *ptr){
-//   global_malloced -= malloc_sizes[(uint64_t)ptr];
-//   free(ptr);
-// }
-
 void fatal_error(std::string error_message){
   perror(std::string("Fatal Error: " + error_message).c_str());
   exit(1);
