@@ -5,15 +5,15 @@
 #include <openssl/evp.h>
 
 template<server_type T>
-void a_cb(int client_idx, server<T> *tcp_server, void *custom_obj){ //the accept callback
+void accept_cb(int client_idx, server<T> *tcp_server, void *custom_obj){ //the accept callback
 
 }
 
 template<server_type T>
-void r_cb(int client_idx, char *buffer, unsigned int length, ulong custom_info, server<T> *tcp_or_tls_server, void *custom_obj){
+void read_cb(int client_idx, char *buffer, unsigned int length, ulong custom_info, server<T> *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
 
-  const auto ws_client_idx = (int32_t)custom_info;
+  const auto ws_client_idx = (int32_t)custom_info; //in the case this is a websocket frame read
 
   if(basic_web_server->is_valid_http_req(buffer, length)){ //if not a valid HTTP req, then probably a websocket frame
     std::vector<std::string> headers;
@@ -29,7 +29,8 @@ void r_cb(int client_idx, char *buffer, unsigned int length, ulong custom_info, 
     while((str = strtok_r(((char*)buffer_str), "\r\n", &saveptr))){ //retrieves the headers
       std::string tempStr = std::string(str, strlen(str));
       
-      if(tempStr.find("Range: bytes=") != std::string::npos) accept_bytes = true;
+      if(tempStr.find("Range: bytes=") != std::string::npos)
+        accept_bytes = true;
       if(tempStr.find("Sec-WebSocket-Key") != std::string::npos)
         sec_websocket_key = tempStr.substr(strlen(websocket_key_token));
       buffer_str = nullptr;
@@ -60,7 +61,7 @@ void r_cb(int client_idx, char *buffer, unsigned int length, ulong custom_info, 
 }
 
 template<server_type T>
-void w_cb(int client_idx, ulong custom_info, server<T> *tcp_or_tls_server, void *custom_obj){
+void write_cb(int client_idx, ulong custom_info, server<T> *tcp_or_tls_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
   const auto ws_client_idx = (int32_t)custom_info;
 

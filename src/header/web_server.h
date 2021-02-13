@@ -4,6 +4,9 @@
 #include "server.h"
 #include "utility.h"
 
+#include "../vendor/readerwriterqueue/atomicops.h"
+#include "../vendor/readerwriterqueue/readerwriterqueue.h"
+
 using uchar = unsigned char;
 
 enum websocket_non_control_opcodes {
@@ -29,6 +32,14 @@ struct ws_client {
 };
 
 template<server_type T>
+class central_web_server {
+private:
+
+public:
+  
+};
+
+template<server_type T>
 class web_server{
   io_uring ring;
 
@@ -48,6 +59,9 @@ class web_server{
   bool close_ws_connection_req(int ws_client_idx, bool client_already_closed = false);
   bool close_ws_connection_confirm(int ws_client_idx);
   void websocket_write(int ws_client_idx, std::vector<char> &&buff);
+  
+  moodycamel::ReaderWriterQueue<void*> to_server_queue{};
+  moodycamel::ReaderWriterQueue<void*> to_program_queue{};
 public:
   web_server();
 

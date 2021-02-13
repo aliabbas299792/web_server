@@ -300,7 +300,7 @@ std::pair<int, std::vector<std::vector<uchar>>> web_server<T>::get_ws_frames(cha
   }
   
   //by this point, the data in the buffer is guaranteed to start with a new frame
-  while(remaining_length > 10){ //you only loop while greater than 10 bytes, since under 10 bytes may not have enough data to get the length
+  while(remaining_length > 5){ //you only loop while greater than 5 bytes, since under 6 bytes may not have enough data to get the length
     auto packet_length = get_ws_frame_length(buffer);
     
     if(remaining_length >= packet_length){

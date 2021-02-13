@@ -24,6 +24,11 @@
 #include <chrono>
 #include <mutex>
 
+//I don't want to type out the parameters twice, so I don't
+#define ACCEPT_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
+#define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj
+#define WRITE_CB_PARAMS int client_idx, ulong custom_info, server<T> *tcp_server, void *custom_obj
+
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
 constexpr int READ_SIZE = 8192; //how much one read request should read
 constexpr int QUEUE_DEPTH = 256; //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
@@ -44,13 +49,13 @@ int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
 template<server_type T>
-using accept_callback = void (*)(int client_idx, server<T> *tcp_server, void *custom_obj);
+using accept_callback = void (*)(ACCEPT_CB_PARAMS);
 
 template<server_type T>
-using read_callback = void(*)(int client_idx, char* buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj);
+using read_callback = void(*)(READ_CB_PARAMS);
 
 template<server_type T>
-using write_callback = void(*)(int client_idx, ulong custom_info, server<T> *tcp_server, void *custom_obj);
+using write_callback = void(*)(WRITE_CB_PARAMS);
 
 struct request {
   event_type event;

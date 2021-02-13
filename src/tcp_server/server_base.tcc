@@ -48,8 +48,7 @@ server_base<T>::server_base(){
     params.flags = IORING_SETUP_ATTACH_WQ;
     io_uring_queue_init_params(QUEUE_DEPTH, &ring, &params);
   }
-
-  io_uring_register_eventfd(&ring, event_fd);
+  
   event_read(); //sets a read request for the eventfd
   
   thread_id = ++current_max_id;

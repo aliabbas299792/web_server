@@ -64,8 +64,6 @@ void server<server_type::NON_TLS>::server_loop(){
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
-
-    std::cout << "got an event\n";
     
     switch(req->event){
       case event_type::ACCEPT: {
@@ -114,8 +112,6 @@ void server<server_type::NON_TLS>::server_loop(){
         break;
       }
       case event_type::EVENTFD: {
-        uint64_t event_data = 0;
-        eventfd_read(event_fd, &event_data);
         std::cout << "EVENTFD thing\n";
         event_read(); //must be called to add another read request for the eventfd
       }

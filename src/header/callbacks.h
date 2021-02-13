@@ -6,13 +6,13 @@
 using uchar = unsigned char;
 
 template<server_type T>
-void a_cb(int client_fd, server<T> *tcp_server, void *custom_obj);
+void accept_cb(ACCEPT_CB_PARAMS);
 
 template<server_type T>
-void r_cb(int client_fd, char *buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj);
+void read_cb(READ_CB_PARAMS);
 
 template<server_type T>
-void w_cb(int client_fd, ulong custom_info, server<T> *tcp_server, void *custom_obj);
+void write_cb(WRITE_CB_PARAMS);
 
 #include "../web_server/callbacks.tcc" //template implementation file
 
