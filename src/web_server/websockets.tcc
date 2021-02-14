@@ -14,6 +14,8 @@ void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_ke
   std::memcpy(&send_buffer[0], resp.c_str(), resp.size());
 
   int ws_client_idx = new_ws_client(client_idx); //sets this index up as a new client
+
+  std::cout << "sub to this path: " << path << "\n";
   
   tcp_server->write_connection(client_idx, std::move(send_buffer), ws_client_idx);
 }

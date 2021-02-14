@@ -9,7 +9,7 @@ int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, send
   if(tcp_server->active_connections.count(client_idx)){ //as long as the client is definitely active
     auto &current = client.send_data.front();
     if(current.last_written == -1){
-      tcp_server->add_write_req(client_idx, event_type::WRITE, buff, sz);
+      // tcp_server->add_write_req(client_idx, event_type::WRITE, buff, sz);
       return WOLFSSL_CBIO_ERR_WANT_WRITE;
     }else{
       const auto written = current.last_written;
@@ -18,7 +18,7 @@ int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, send
     }
   }else{
     if(client.accept_last_written == -1){
-      tcp_server->add_write_req(client_idx, event_type::ACCEPT_WRITE, buff, sz);
+      // tcp_server->add_write_req(client_idx, event_type::ACCEPT_WRITE, buff, sz);
       return WOLFSSL_CBIO_ERR_WANT_WRITE;
     }else{
       const auto written = client.accept_last_written;

@@ -57,19 +57,25 @@ using read_callback = void(*)(READ_CB_PARAMS);
 template<server_type T>
 using write_callback = void(*)(WRITE_CB_PARAMS);
 
+struct write_data {
+  write_data(std::vector<char> &&buff) : buff(buff) {}
+  std::vector<char> buff{};
+  int last_written = -1;
+  int total_written = 0;
+};
+
+struct read_data {
+  read_data(char *buffer = nullptr, size_t length = 0) : buffer(buffer), length(length) {}
+  size_t length;
+  char *buffer;
+};
+
 struct request {
   event_type event;
   int client_idx{};
   int ID{};
-  int written{}; //how much written so far
-  int total_length{}; //how much data is in the request, in bytes
-  char *buffer = nullptr;
-};
-
-struct write_data {
-  write_data(std::vector<char> &&buff) : buff(buff) {}
-  std::vector<char> buff;
-  int last_written = -1;
+  write_data *w_data = nullptr;
+  read_data r_data{};
 };
 
 struct client_base {
@@ -118,7 +124,7 @@ class server_base {
     bool running_server = false;
 
     //need it protected rather than private, since need to access from children
-    int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
+    int add_write_req(int client_idx, event_type event, write_data *w_data); //adds a write request using the provided request structure
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
 

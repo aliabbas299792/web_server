@@ -9,10 +9,10 @@ web_server<T>::web_server(){
 template<server_type T>
 bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server){
   char *saveptr = nullptr;
-  std::string subdir = strtok_r((char*)path.c_str(), "/", &saveptr);
+  const char* subdir = strtok_r((char*)path.c_str(), "/", &saveptr);
   
-  if(subdir == "ws" && sec_websocket_key != ""){
-    websocket_accept_read_cb(sec_websocket_key, path, client_idx, tcp_server);
+  if(strncmp(subdir, "ws", 2) == 0  && sec_websocket_key != ""){
+    websocket_accept_read_cb(sec_websocket_key, path.substr(2), client_idx, tcp_server);
     return true;
   }else{
     path = path == "" ? "public/index.html" : "public/"+path;
