@@ -57,9 +57,15 @@ using read_callback = void(*)(READ_CB_PARAMS);
 template<server_type T>
 using write_callback = void(*)(WRITE_CB_PARAMS);
 
-struct write_data {
+struct buff_wrapper {
   write_data(std::vector<char> &&buff) : buff(buff) {}
   std::vector<char> buff{};
+  int num_uses = 1; //the idea is to decrement this each time you would normally free the data buffer, and if it reaches 0, to free it
+  //so in this case it defaults to a single use buff_wrapper, and should subsequently be freed
+};
+
+struct write_data {
+  buff_wrapper *data = nullptr;
   int last_written = -1;
   int total_written = 0;
 };
@@ -74,7 +80,7 @@ struct request {
   event_type event;
   int client_idx{};
   int ID{};
-  write_data *w_data = nullptr;
+  write_data w_data{};
   read_data r_data{};
 };
 
