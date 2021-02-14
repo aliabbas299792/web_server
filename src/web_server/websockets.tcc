@@ -4,7 +4,7 @@
 #include <openssl/evp.h>
 
 template<server_type T>
-void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server){
+void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx, server<T> *tcp_server){
   this->tcp_server = tcp_server;
 
   const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
@@ -160,6 +160,7 @@ std::vector<char> web_server<T>::make_ws_frame(const std::string &packet_msg, we
   ushort payload_len_short = 0;
   ulong payload_len_long = 0;
   const auto msg_size = packet_msg.size();
+  
   if(msg_size < 126){ //less than 126 bytes long
     payload_len_char = msg_size;
   }else if(msg_size < 65536){ //less than 2^16 bytes long
@@ -175,7 +176,7 @@ std::vector<char> web_server<T>::make_ws_frame(const std::string &packet_msg, we
   //don't mask frames being sent to the client
 
   //sets the correct payload length
-  if(payload_len_char)
+  if(msg_size < 126)
     data[1] = payload_len_char;
   else if(payload_len_short){
     data[1] = 126;

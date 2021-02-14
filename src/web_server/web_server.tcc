@@ -7,6 +7,27 @@ web_server<T>::web_server(){
 }
 
 template<server_type T>
+bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server){
+  char *saveptr = nullptr;
+  std::string subdir = strtok_r((char*)path.c_str(), "/", &saveptr);
+  
+  if(subdir == "ws" && sec_websocket_key != ""){
+    websocket_accept_read_cb(sec_websocket_key, path, client_idx, tcp_server);
+    return true;
+  }else{
+    path = path == "" ? "public/index.html" : "public/"+path;
+    
+    std::vector<char> send_buffer{};
+    
+    if((send_buffer = read_file_web(path, 200, accept_bytes)).size() != 0){
+      tcp_server->write_connection(client_idx, std::move(send_buffer));
+      return true;
+    }
+    return false;
+  }
+}
+
+template<server_type T>
 bool web_server<T>::is_valid_http_req(const char* buff, int length){
   if(length < 16) return false; //minimum size for valid HTTP request is 16 bytes
   const char *types[] = { "GET ", "POST ", "PUT ", "DELETE ", "PATCH " };

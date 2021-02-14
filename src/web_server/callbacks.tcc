@@ -37,26 +37,21 @@ void read_cb(int client_idx, char *buffer, unsigned int length, ulong custom_inf
       headers.push_back(tempStr);
     }
 
-    if(sec_websocket_key != ""){ //websocket connection callback
-      basic_web_server->websocket_accept_read_cb(sec_websocket_key, client_idx, tcp_or_tls_server); //this will accept websockets
-    } else if(!strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET")){ //get callback
-      char *path = strtok_r(nullptr, " ", &saveptr);
-      std::string processed_path = std::string(&path[1], strlen(path)-1);
-      processed_path = processed_path == "" ? "public/index.html" : "public/"+processed_path;
+    bool is_GET = !strcmp(strtok_r((char*)headers[0].c_str(), " ", &saveptr), "GET");
+    std::string path = &strtok_r(nullptr, " ", &saveptr)[1]; //if it's a valid request it should be a path
 
-      char *http_version = strtok_r(nullptr, " ", &saveptr);
-      
-      std::vector<char> send_buffer{};
-      
-      if((send_buffer = basic_web_server->read_file_web(processed_path, 200, accept_bytes)).size() != 0){
-        tcp_or_tls_server->write_connection(client_idx, std::move(send_buffer));
-      }else{
-        send_buffer = basic_web_server->read_file_web("public/404.html", 400);
-        tcp_or_tls_server->write_connection(client_idx, std::move(send_buffer));
-      }
-    } 
+    //get callback, if unsuccesful then 404
+    if( !is_GET ||
+        !basic_web_server->get_process(path, accept_bytes, sec_websocket_key, client_idx, tcp_or_tls_server)
+      )
+    {
+      auto send_buffer = basic_web_server->read_file_web("public/404.html", 400);
+      tcp_or_tls_server->write_connection(client_idx, std::move(send_buffer));
+    }
   } else if(basic_web_server->all_websocket_connections.count(ws_client_idx)) { //this bit should be just websocket frames
     basic_web_server->websocket_process_read_cb(ws_client_idx, buffer, length); //this is the main websocket callback, deals with receiving messages, and sending them too if it needs/wants to
+  }else{
+    tcp_or_tls_server->close_connection(client_idx);
   }
 }
 

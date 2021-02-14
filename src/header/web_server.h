@@ -68,11 +68,13 @@ public:
   //http public methods
   bool is_valid_http_req(const char* buff, int length);
   std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
+
+  bool get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server);
   
   //websocket public methods
   void websocket_process_read_cb(int ws_client_idx, char *buffer, int length);
   bool websocket_process_write_cb(int ws_client_idx); //returns whether or not this was used
-  void websocket_accept_read_cb(const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server); //used in the read callback to accept web sockets
+  void websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx, server<T> *tcp_server); //used in the read callback to accept web sockets
 
   std::unordered_set<int> all_websocket_connections; //this is used for the duration of the connection (even after we've sent the close request)
   std::unordered_set<int> active_websocket_connections; //this is only active up until we call a close request

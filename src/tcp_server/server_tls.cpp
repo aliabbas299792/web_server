@@ -92,7 +92,10 @@ void server<server_type::TLS>::server_loop(){
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
 
-    if(req->event != event_type::ACCEPT && (cqe->res <= 0 || clients[req->client_idx].id != req->ID)){
+    if(req->event != event_type::ACCEPT &&
+       req->event != event_type::EVENTFD &&
+       (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
+    {
       if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
         req->buffer = nullptr; //done with the request buffer
       if(cqe->res < 0 && clients[req->client_idx].id == req->ID){
@@ -187,6 +190,10 @@ void server<server_type::TLS>::server_loop(){
               client.recv_data = {};
           }
           break;
+        }
+        case event_type::EVENTFD: {
+          std::cout << "EVENTFD thing\n";
+          event_read(); //must be called to add another read request for the eventfd
         }
       }
     }
