@@ -2,15 +2,15 @@
 #include "../header/utility.h"
 
 void server<server_type::TLS>::close_connection(int client_idx) {
-  auto &client_ = clients[client_idx];
-  wolfSSL_shutdown(client_.ssl);
-  wolfSSL_free(client_.ssl);
+  auto &client = clients[client_idx];
+  wolfSSL_shutdown(client.ssl);
+  wolfSSL_free(client.ssl);
 
-  close(client_.sockfd);
+  close(client.sockfd);
 
-  client_.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
+  client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
   active_connections.erase(client_idx);
-  client_.send_data = {}; //free up all the data we might have wanted to send
+  client.send_data = {}; //free up all the data we might have wanted to send
 
   freed_indexes.insert(client_idx);
 }
@@ -59,7 +59,9 @@ server<server_type::TLS>::server(
   wolfSSL_CTX_SetIOSend(wolfssl_ctx, tls_send);
 
   std::cout << "TLS will be used\n";
-
+  
+  std::memset(&ring, 0, sizeof(io_uring));
+  io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
   this->listener_fd = setup_listener(listen_port); //setup the listener socket
 }
 
@@ -92,13 +94,28 @@ void server<server_type::TLS>::server_loop(){
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
 
-    if(req->event != event_type::ACCEPT &&
-       req->event != event_type::EVENTFD &&
-       (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
-    {
+      // std::cout << "Active connections: ";
+      // for(const auto &connection : active_connections){
+      //   std::cout << connection << " ";
+      // }
+      // std::cout << "\n";
+
+      // size_t buffered{};
+      // for(auto &client : clients){
+      //   std::queue<write_data> temp_queue = client.send_data;
+      //   while(!temp_queue.empty()){
+      //     buffered += temp_queue.front().buff.size();
+      //     temp_queue.pop();
+      //   }
+      //   buffered += client.recv_data.size();
+      // }
+      // std::cout << "\tcurrently buffered: " << buffered << std::endl;
+      // std::cout << "\tmallocd: " << global_malloced << "\n";
+
+    if(req->event != event_type::ACCEPT && (cqe->res <= 0 || clients[req->client_idx].id != req->ID)){
       if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
         req->buffer = nullptr; //done with the request buffer
-      if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
+      if(cqe->res < 0 && clients[req->client_idx].id == req->ID){
         close_connection(req->client_idx); //making sure to remove any data relating to it as well
       }
     }else{
@@ -191,13 +208,12 @@ void server<server_type::TLS>::server_loop(){
           }
           break;
         }
-        case event_type::EVENTFD: {
-          std::cout << "EVENTFD thing\n";
-          event_read(); //must be called to add another read request for the eventfd
-        }
       }
     }
-    
+
+    //free any malloc'd data
+    // CUSTOM_FREE(req->buffer);
+    // CUSTOM_FREE(req);
     free(req->buffer);
     free(req);
 

@@ -65,7 +65,7 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
       if(frame_contents.size() > 0){
         //this is where you'd deal with websocket connections
         std::string str = "";
-        for(int i = 0; i < 1024*1024*1; i++){
+        for(int i = 0; i < 1024*1024*20; i++){
           str += "A";
         }
 
