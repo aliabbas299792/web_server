@@ -98,7 +98,7 @@ void server<server_type::TLS>::server_loop(){
     {
       if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
         req->buffer = nullptr; //done with the request buffer
-      if(cqe->res < 0 && clients[req->client_idx].id == req->ID){
+      if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
         close_connection(req->client_idx); //making sure to remove any data relating to it as well
       }
     }else{
