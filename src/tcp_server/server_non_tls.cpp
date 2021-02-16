@@ -64,31 +64,36 @@ void server<server_type::NON_TLS>::server_loop(){
     if(ret < 0)
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
-    
-    switch(req->event){
-      case event_type::ACCEPT: {
-        add_accept_req(listener_fd, &client_address, &client_address_length);
-        auto client_idx = setup_client(cqe->res);
-        active_connections.insert(client_idx); 
-        //above basically says this connection is now active, checking if this connection replaced an existing but broken one happens elsewhere
 
-        if(accept_cb != nullptr) accept_cb(client_idx, this, custom_obj);
-        
-        add_read_req(client_idx, event_type::READ); //also need to read whatever request it sends immediately
+    if(req->event != event_type::ACCEPT &&
+       req->event != event_type::EVENTFD &&
+       (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
+    {
+      if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
         req->buffer = nullptr; //done with the request buffer
-        break;
+      if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
+        close_connection(req->client_idx); //making sure to remove any data relating to it as well
       }
-      case event_type::READ: {
-        if(cqe->res > 0)
+    }else{
+      switch(req->event){
+        case event_type::ACCEPT: {
+          add_accept_req(listener_fd, &client_address, &client_address_length);
+          auto client_idx = setup_client(cqe->res);
+
+          active_connections.insert(client_idx);
+          //above basically says this connection is now active, checking if this connection replaced an existing but broken one happens elsewhere
+
+          if(accept_cb != nullptr) accept_cb(client_idx, this, custom_obj);
+          
+          add_read_req(client_idx, event_type::READ); //also need to read whatever request it sends immediately
+          req->buffer = nullptr; //done with the request buffer
+          break;
+        }
+        case event_type::READ: {
           if(read_cb != nullptr) read_cb(req->client_idx, req->buffer, cqe->res, clients[req->client_idx].custom_info, this, custom_obj);
-        else
-          close_connection(req->client_idx);
-        break;
-      }
-      case event_type::WRITE: {
-        if(cqe->res < 0 || clients[req->client_idx].id != req->ID) { //if the ID is different then it means the connection has been freed already
-          close_connection(req->client_idx);
-        }else{
+          break;
+        }
+        case event_type::WRITE: {
           auto &client = clients[req->client_idx];
           if(cqe->res + req->written < req->total_length && cqe->res > 0){ //if the current request isn't finished, continue writing
             int rc = add_write_req_continued(req, cqe->res);
@@ -107,13 +112,13 @@ void server<server_type::NON_TLS>::server_loop(){
             }
           }
           if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj); //call the write callback
+          req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
+          break;
         }
-        req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
-        break;
-      }
-      case event_type::EVENTFD: {
-        std::cout << "EVENTFD thing\n";
-        event_read(); //must be called to add another read request for the eventfd
+        case event_type::EVENTFD: {
+          std::cout << "EVENTFD thing\n";
+          event_read(); //must be called to add another read request for the eventfd
+        }
       }
     }
 

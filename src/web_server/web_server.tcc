@@ -12,7 +12,7 @@ bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std:
   const char* token = strtok_r((char*)path.c_str(), "/", &saveptr);
   const char* subdir = token ? token : "";
 
-  if( (strlen(subdir) == 2 && strncmp(subdir, "ws", 2)) == 0  && sec_websocket_key != ""){
+  if( (strlen(subdir) == 2 && strncmp(subdir, "ws", 2) == 0)  && sec_websocket_key != ""){
     websocket_accept_read_cb(sec_websocket_key, path.substr(2), client_idx, tcp_server);
     return true;
   }else{
