@@ -27,8 +27,7 @@ void remove_first_n_elements(std::vector<T> &data, int num_elements_to_remove){ 
   const auto size = data.size();
   const int overlap = size - 2*num_elements_to_remove;
   if(overlap > 0){
-    std::memcpy(&data[0], &data[num_elements_to_remove], num_elements_to_remove);
-    std::memcpy(&data[num_elements_to_remove], &data[2*num_elements_to_remove], overlap);
+    std::memmove(&data[0], &data[num_elements_to_remove], size - num_elements_to_remove);
   }else{
     std::memcpy(&data[0], &data[num_elements_to_remove], size - num_elements_to_remove);
   }
