@@ -12,7 +12,39 @@ int server_base<T>::current_max_id = 0;
 template<server_type T>
 void server_base<T>::start(){ //function to run the server
   std::cout << "Running server\n";
-  if(!running_server) static_cast<server<T>*>(this)->server_loop();
+  if(!running_server){
+    running_server = true;
+
+    io_uring_cqe *cqe;
+
+    add_tcp_accept_req();
+
+    while(true){
+      char ret = io_uring_wait_cqe(&ring, &cqe);
+      if(ret < 0)
+        fatal_error("io_uring_wait_cqe");
+      request *req = (request*)cqe->user_data;
+
+      if(req->event != event_type::ACCEPT &&
+        req->event != event_type::EVENTFD &&
+        (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
+      {
+        if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
+          req->buffer = nullptr; //done with the request buffer
+        if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
+          static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
+        }
+      }else{
+        static_cast<server<T>*>(this)->req_event_handler(req, cqe->res);
+      }
+
+      if(req)
+        free(req->buffer);
+      free(req);
+
+      io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
+    }
+  }
 }
 
 template<server_type T>
@@ -34,7 +66,7 @@ void server_base<T>::event_read(){
 }
 
 template<server_type T>
-server_base<T>::server_base(){
+server_base<T>::server_base(int listen_port){
   std::unique_lock<std::mutex> init_lock(init_mutex);
 
   if(shared_ring_fd == -1){
@@ -50,6 +82,8 @@ server_base<T>::server_base(){
   }
   
   event_read(); //sets a read request for the eventfd
+  
+  listener_fd = setup_listener(listen_port); //setup the listener socket
   
   thread_id = ++current_max_id;
 }
@@ -174,4 +208,9 @@ int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer
   io_uring_submit(&ring); //submits the event
 
   return 0;
+}
+
+template<server_type T>
+void server_base<T>::add_tcp_accept_req(){
+  add_accept_req(listener_fd, &client_address, &client_address_length);
 }

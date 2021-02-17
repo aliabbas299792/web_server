@@ -95,14 +95,9 @@ struct client<server_type::TLS>: client_base {
 template<server_type T>
 class server_base {
   protected:
-    int listener_fd = 0;
     accept_callback<T> accept_cb = nullptr;
     read_callback<T> read_cb = nullptr;
     write_callback<T> write_cb = nullptr;
-
-    static std::mutex init_mutex;
-    static int shared_ring_fd; //pointer to a single io_uring ring fd, who's async backend is shared
-    static int current_max_id; //max id of thread
 
     int thread_id = -1;
     io_uring ring;
@@ -112,24 +107,36 @@ class server_base {
     std::set<int> freed_indexes{}; //using a set to store free indexes instead
     std::vector<client<T>> clients{};
 
-    int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
-    int setup_listener(int port); //sets up the listener socket
-
-    bool running_server = false;
+    void add_tcp_accept_req();
 
     //need it protected rather than private, since need to access from children
     int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
-
-    void register_eventfd(int eventfd); //registers an eventfd
     
     int setup_client(int client_idx);
 
-    int event_fd = eventfd(0, 0); //used to awaken this thread for some event
     void event_read(); //will set a read request for the eventfd
+  private:
+    int event_fd = eventfd(0, 0); //used to awaken this thread for some event
+
+    int listener_fd = 0;
+
+    int add_accept_req(int listener_fd, sockaddr_storage *client_address, socklen_t *client_address_length); //adds an accept request to the io_uring ring
+    //used in the req_event_handler functions for accept requests
+    sockaddr_storage client_address{};
+    socklen_t client_address_length = sizeof(client_address);
+
+    int setup_listener(int port); //sets up the listener socket
+
+    bool running_server = false;
+
+    //needed to synchronize the multiple server threads
+    static std::mutex init_mutex;
+    static int shared_ring_fd; //pointer to a single io_uring ring fd, who's async backend is shared
+    static int current_max_id; //max id of thread
   public:
-    server_base();
+    server_base(int listen_port);
     void start(); //function to start the server
 
     void read_connection(int client_idx, ulong custom_info = 0);
@@ -140,7 +147,8 @@ template<>
 class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
   private:
     friend class server_base;
-    void server_loop();
+
+    void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
   public:
@@ -164,7 +172,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
 
     friend class server_base;
     void tls_accept(int client_socket);
-    void server_loop();
+    void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr;
   public:
