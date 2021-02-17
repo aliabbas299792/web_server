@@ -136,8 +136,9 @@ std::string web_server<T>::get_accept_header_value(std::string input) {
   unsigned char hash[SHA_DIGEST_LENGTH];
   SHA1((const unsigned char*)input.c_str(), input.size(), hash);
   //for input of length 20, base64 output length is 28 (a bit over *4/3 - *4/3 for larger lengths)
-  auto base64data = (char*)calloc(28+1, 1); //+1 for the terminating null that EVP_EncodeBlock adds on
-  EVP_EncodeBlock((unsigned char*)base64data, hash, SHA_DIGEST_LENGTH);
+  std::string base64data;
+  base64data.resize(28); //no need for +1, std::string does that for you
+  EVP_EncodeBlock((unsigned char*)base64data.c_str(), hash, SHA_DIGEST_LENGTH);
   return base64data;
 }
 
