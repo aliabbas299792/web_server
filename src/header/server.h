@@ -148,6 +148,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
   private:
     friend class server_base;
 
+    //this takes the request pointer by reference, since for now, we are still using some manual memory management
     void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
@@ -172,6 +173,8 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
 
     friend class server_base;
     void tls_accept(int client_socket);
+    
+    //this takes the request pointer by reference, since for now, we are still using some manual memory management
     void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr;
