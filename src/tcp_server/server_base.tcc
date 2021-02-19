@@ -12,39 +12,8 @@ int server_base<T>::current_max_id = 0;
 template<server_type T>
 void server_base<T>::start(){ //function to run the server
   std::cout << "Running server\n";
-  if(!running_server){
-    running_server = true;
-
-    io_uring_cqe *cqe;
-
-    add_tcp_accept_req();
-
-    while(true){
-      char ret = io_uring_wait_cqe(&ring, &cqe);
-      if(ret < 0)
-        fatal_error("io_uring_wait_cqe");
-      request *req = (request*)cqe->user_data;
-
-      if(req->event != event_type::ACCEPT &&
-        req->event != event_type::EVENTFD &&
-        (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
-      {
-        if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
-          req->buffer = nullptr; //done with the request buffer
-        if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
-          static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
-        }
-      }else{
-        static_cast<server<T>*>(this)->req_event_handler(req, cqe->res);
-      }
-
-      if(req)
-        free(req->buffer);
-      free(req);
-
-      io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
-    }
-  }
+  if(!running_server)
+    static_cast<server<T>*>(this)->server_loop();
 }
 
 template<server_type T>
@@ -56,11 +25,11 @@ void server_base<T>::notify_event(){
 template<server_type T>
 void server_base<T>::event_read(){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
-  request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
-  req->buffer = (char*)std::malloc(sizeof(uint64_t));
+  request *req = new request(); //enough space for the request struct
+  req->read_data.resize(sizeof(uint64_t));
   req->event = event_type::EVENTFD;
   
-  io_uring_prep_read(sqe, event_fd, req->buffer, sizeof(uint64_t), 0); //don't read at an offset
+  io_uring_prep_read(sqe, event_fd, &(req->read_data[0]), sizeof(uint64_t), 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 }
@@ -165,7 +134,7 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   io_uring_prep_accept(sqe, listener_fd, (sockaddr*)client_address, client_address_length, 0); //no flags set, prepares an SQE
 
-  request *req = (request*)std::malloc(sizeof(request));
+  request *req = new request();
   req->event = event_type::ACCEPT;
 
   io_uring_sqe_set_data(sqe, req); //sets the SQE data
@@ -177,15 +146,32 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
 template<server_type T>
 int server_base<T>::add_read_req(int client_idx, event_type event){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
-  request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
-  req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
+  request *req = new request(); //enough space for the request struct
   req->total_length = READ_SIZE;;
   req->event = event;
   req->client_idx = client_idx;
   req->ID = clients[client_idx].id;
-  std::memset(req->buffer, 0, READ_SIZE);
+  req->read_data.resize(READ_SIZE);
   
-  io_uring_prep_read(sqe, clients[client_idx].sockfd, req->buffer, READ_SIZE, 0); //don't read at an offset
+  io_uring_prep_read(sqe, clients[client_idx].sockfd, &(req->read_data[0]), READ_SIZE, 0); //don't read at an offset
+  io_uring_sqe_set_data(sqe, req);
+  io_uring_submit(&ring); //submits the event
+
+  return 0;
+}
+
+template<server_type T>
+int server_base<T>::add_write_req(int client_idx, event_type event, std::vector<char> &&buff) {
+  request *req = new request();
+  std::memset(req, 0, sizeof(request));
+  req->client_idx = client_idx;
+  req->total_length = buff.size();
+  req->send_data = buff;
+  req->event = event;
+  req->ID = clients[client_idx].id;
+  
+  io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+  io_uring_prep_write(sqe, clients[client_idx].sockfd, &(req->send_data[0]), req->total_length, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 
