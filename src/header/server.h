@@ -28,6 +28,7 @@
 #define ACCEPT_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
 #define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj
 #define WRITE_CB_PARAMS int client_idx, ulong custom_info, server<T> *tcp_server, void *custom_obj
+#define EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
 constexpr int READ_SIZE = 8192; //how much one read request should read
@@ -57,6 +58,9 @@ using read_callback = void(*)(READ_CB_PARAMS);
 template<server_type T>
 using write_callback = void(*)(WRITE_CB_PARAMS);
 
+template<server_type T>
+using event_callback = void(*)(EVENT_CB_PARAMS);
+
 struct request {
   event_type event;
   int client_idx{};
@@ -68,10 +72,26 @@ struct request {
   std::vector<char> read_data{};
 };
 
+struct multi_write {
+  multi_write(std::vector<char> &&buff, int uses) : buff(buff), uses(uses) {}
+  std::vector<char> buff;
+  int uses{}; //this should be decremented each time you would normally delete this object, when it reaches 0, then delete
+};
+
 struct write_data {
   write_data(std::vector<char> &&buff) : buff(buff) {}
+  write_data(multi_write *multi_write_data) : multi_write_data(multi_write_data) {}
+  multi_write *multi_write_data = nullptr; //if not null then buff should be empty, and data should be in the multi_write pointer
   std::vector<char> buff;
   int last_written = -1;
+  ~write_data(){
+    if(multi_write_data){
+      multi_write_data->uses--;
+      if(multi_write_data->uses == 0){
+        delete multi_write_data;
+      }
+    }
+  }
 };
 
 struct client_base {
@@ -100,6 +120,7 @@ class server_base {
     accept_callback<T> accept_cb = nullptr;
     read_callback<T> read_cb = nullptr;
     write_callback<T> write_cb = nullptr;
+    event_callback<T> event_cb = nullptr;
 
     int thread_id = -1;
     io_uring ring;
@@ -112,7 +133,6 @@ class server_base {
     void add_tcp_accept_req();
 
     //need it protected rather than private, since need to access from children
-    int add_write_req(int client_idx, event_type event, std::vector<char> &&buff); //adds a write request using the provided request structure
     int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //this is for the case you want to write a buffer rather than a vector
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
@@ -143,6 +163,7 @@ class server_base {
     void start(); //function to start the server
 
     void read_connection(int client_idx, ulong custom_info = 0);
+
     void notify_event();
 };
 
@@ -159,8 +180,23 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
       accept_callback<server_type::NON_TLS> a_cb = nullptr,
       read_callback<server_type::NON_TLS> r_cb = nullptr,
       write_callback<server_type::NON_TLS> w_cb = nullptr,
+      event_callback<server_type::NON_TLS> e_cb = nullptr,
       void *custom_obj = nullptr
     );
+    
+    template<typename U>
+    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
+      if(num_clients > 0){
+        auto data = new multi_write(std::move(buff), num_clients);
+
+        for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
+          auto &client = clients[*client_idx_ptr];
+          client.send_data.emplace(data);
+          if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
+            add_write_req(*client_idx_ptr, event_type::WRITE, &(data->buff[0]), data->buff.size());
+        }
+      }
+    }
 
     void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
@@ -187,8 +223,23 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       accept_callback<server_type::TLS> a_cb = nullptr,
       read_callback<server_type::TLS> r_cb = nullptr,
       write_callback<server_type::TLS> w_cb = nullptr,
+      event_callback<server_type::TLS> e_cb = nullptr,
       void *custom_obj = nullptr
     );
+    
+    template<typename U>
+    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
+      if(num_clients > 0){
+        auto data = new multi_write(std::move(buff), num_clients);
+
+        for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
+          auto &client = clients[*client_idx_ptr];
+          client.send_data.emplace(data);
+          if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
+            wolfSSL_write(client.ssl, &(data->buff[0]), data->buff.size());
+        }
+      }
+    }
 
     void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed

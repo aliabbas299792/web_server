@@ -24,7 +24,8 @@ struct receiving_data_info{
 };
 
 struct ws_client {
-  int closing_state{};
+  int currently_writing = 0; //items it is currently writing
+  bool close = false; //should this socket be closed
   std::vector<uchar> websocket_frames{};
   receiving_data_info receiving_data{};
   int id = 0; //in case we use io_uring later
@@ -51,19 +52,20 @@ class web_server{
 
   std::string get_accept_header_value(std::string input);
   ulong get_ws_frame_length(const char *buffer);
-  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
   std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data);
   std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int ws_client_idx);
   
   int new_ws_client(int client_idx);
   bool close_ws_connection_req(int ws_client_idx, bool client_already_closed = false);
-  bool close_ws_connection_confirm(int ws_client_idx);
-  void websocket_write(int ws_client_idx, std::vector<char> &&buff);
+  bool close_ws_connection_potential_confirm(int ws_client_idx);
   
   moodycamel::ReaderWriterQueue<void*> to_server_queue{};
   moodycamel::ReaderWriterQueue<void*> to_program_queue{};
 public:
   web_server();
+
+  void websocket_write(int ws_client_idx, std::vector<char> &&buff);
+  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
 
   //http public methods
   bool is_valid_http_req(const char* buff, int length);
@@ -76,8 +78,8 @@ public:
   bool websocket_process_write_cb(int ws_client_idx); //returns whether or not this was used
   void websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx, server<T> *tcp_server); //used in the read callback to accept web sockets
 
-  std::unordered_set<int> all_websocket_connections; //this is used for the duration of the connection (even after we've sent the close request)
-  std::unordered_set<int> active_websocket_connections; //this is only active up until we call a close request
+  std::unordered_set<int> all_websocket_connections{}; //this is used for the duration of the connection (even after we've sent the close request)
+  std::unordered_set<int> active_websocket_connections_client_idxs{}; //this is only active up until we call a close request, has client_idx
 
   std::set<int> freed_indexes{}; //set of free indexes for websocket client stuff
   std::vector<ws_client> websocket_clients{};

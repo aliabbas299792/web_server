@@ -161,24 +161,6 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
 }
 
 template<server_type T>
-int server_base<T>::add_write_req(int client_idx, event_type event, std::vector<char> &&buff) {
-  request *req = new request();
-  std::memset(req, 0, sizeof(request));
-  req->client_idx = client_idx;
-  req->total_length = buff.size();
-  req->send_data = buff;
-  req->event = event;
-  req->ID = clients[client_idx].id;
-  
-  io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, clients[client_idx].sockfd, &(req->send_data[0]), req->total_length, 0); //do not write at an offset
-  io_uring_sqe_set_data(sqe, req);
-  io_uring_submit(&ring); //submits the event
-
-  return 0;
-}
-
-template<server_type T>
 int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
   request *req = (request*)std::malloc(sizeof(request));
   std::memset(req, 0, sizeof(request));

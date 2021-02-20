@@ -44,7 +44,7 @@ std::unordered_map<std::string, std::string> read_config(){
   char *saveptr = nullptr;
   while((line = strtok_r(begin_ptr, "\n", &saveptr))){
     begin_ptr = nullptr;
-    lines.push_back(std::vector<char>(line, line + strlen(line)));
+    lines.emplace(lines.end(), line, line + strlen(line));
   }
 
   std::unordered_map<std::string, std::string> config_data_map;
