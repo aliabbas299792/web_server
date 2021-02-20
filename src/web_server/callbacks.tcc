@@ -16,8 +16,8 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
   std::string str = "hello world....\n";
   
-  auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
+  // auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+  // tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
 }
 
 template<server_type T>
@@ -53,7 +53,7 @@ void read_cb(int client_idx, char *buffer, unsigned int length, ulong custom_inf
 
     //get callback, if unsuccesful then 404
     if( !is_GET ||
-        !basic_web_server->get_process(path, accept_bytes, sec_websocket_key, client_idx, tcp_server)
+        !basic_web_server->get_process(path, accept_bytes, sec_websocket_key, client_idx)
       )
     {
       auto send_buffer = basic_web_server->read_file_web("public/404.html", 400);

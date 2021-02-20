@@ -7,7 +7,7 @@ void fatal_error(std::string error_message){
   exit(1);
 }
 
-long int get_file_size(int file_fd){
+uint64_t get_file_size(int file_fd){
   stat_struct file_stat;
 
   if(fstat(file_fd, &file_stat) < 0)
