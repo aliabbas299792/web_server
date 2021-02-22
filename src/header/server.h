@@ -26,8 +26,9 @@
 
 //I don't want to type out the parameters twice, so I don't
 #define ACCEPT_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
-#define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj
-#define WRITE_CB_PARAMS int client_idx, ulong custom_info, server<T> *tcp_server, void *custom_obj
+#define CLOSE_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
+#define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj
+#define WRITE_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
 #define EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj
 #define CUSTOM_READ_CB_PARAMS int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj
 
@@ -52,6 +53,9 @@ int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
 template<server_type T>
 using accept_callback = void (*)(ACCEPT_CB_PARAMS);
+
+template<server_type T>
+using close_callback = void (*)(CLOSE_CB_PARAMS);
 
 template<server_type T>
 using read_callback = void(*)(READ_CB_PARAMS);
@@ -103,7 +107,6 @@ struct client_base {
   int id{};
   int sockfd{};
   std::queue<write_data> send_data{};
-  ulong custom_info = -1; //default custom_info is -1
 };
 
 template<server_type T>
@@ -123,6 +126,7 @@ template<server_type T>
 class server_base {
   protected:
     accept_callback<T> accept_cb = nullptr;
+    close_callback<T> close_cb = nullptr;
     read_callback<T> read_cb = nullptr;
     write_callback<T> write_cb = nullptr;
     event_callback<T> event_cb = nullptr;
@@ -170,7 +174,7 @@ class server_base {
     server_base(int listen_port);
     void start(); //function to start the server
 
-    void read_connection(int client_idx, ulong custom_info = 0);
+    void read_connection(int client_idx);
 
     //to read for a custom fd and be notified via the CUSTOM_READ event
     void custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff = {}, size_t read_amount = 0);
@@ -190,6 +194,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     server(int listen_port,
       void *custom_obj = nullptr,
       accept_callback<server_type::NON_TLS> a_cb = nullptr,
+      close_callback<server_type::NON_TLS> c_cb = nullptr,
       read_callback<server_type::NON_TLS> r_cb = nullptr,
       write_callback<server_type::NON_TLS> w_cb = nullptr,
       event_callback<server_type::NON_TLS> e_cb = nullptr,
@@ -210,7 +215,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
       }
     }
 
-    void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
+    void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
@@ -234,6 +239,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       std::string pkey_location,
       void *custom_obj = nullptr,
       accept_callback<server_type::TLS> a_cb = nullptr,
+      close_callback<server_type::TLS> c_cb = nullptr,
       read_callback<server_type::TLS> r_cb = nullptr,
       write_callback<server_type::TLS> w_cb = nullptr,
       event_callback<server_type::TLS> e_cb = nullptr,
@@ -254,7 +260,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       }
     }
 
-    void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
+    void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 

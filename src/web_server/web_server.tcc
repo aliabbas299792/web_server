@@ -119,3 +119,15 @@ template<server_type T>
 void web_server<T>::set_tcp_server(server<T> *tcp_server){
   this->tcp_server = tcp_server;
 }
+
+template<server_type T>
+void web_server<T>::new_tcp_client(int client_idx){
+  if(client_idx + 1 >= tcp_clients.size()) //size starts from 1, idx starts from 0
+    tcp_clients.resize(client_idx + 1);
+  tcp_clients[client_idx] = tcp_client();
+}
+
+template<server_type T>
+void web_server<T>::kill_tcp_client(int client_idx){
+
+}

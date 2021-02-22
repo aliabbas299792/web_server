@@ -81,8 +81,7 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
 }
 
 template<server_type T>
-void server_base<T>::read_connection(int client_idx, ulong custom_info) {
-  clients[client_idx].custom_info = custom_info;
+void server_base<T>::read_connection(int client_idx) {
   add_read_req(client_idx, event_type::READ);
 }
 
