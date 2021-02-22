@@ -205,7 +205,7 @@ bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
   auto &client_data = websocket_clients[ws_client_idx];
   if(client_data.currently_writing == 1){
     if(client_data.close){
-      tcp_server->close_connection(client_data.client_idx);
+      close_connection(client_data.client_idx);
       all_websocket_connections.erase(ws_client_idx); //connection definitely closed by now
       freed_indexes.insert(ws_client_idx);
     }

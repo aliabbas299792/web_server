@@ -79,6 +79,7 @@ void server<server_type::NON_TLS>::server_loop(){
 
     if(req->event != event_type::ACCEPT &&
       req->event != event_type::EVENTFD &&
+      req->event != event_type::CUSTOM_READ &&
       cqe->res <= 0 &&
       clients[req->client_idx].id == req->ID
       )

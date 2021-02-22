@@ -23,13 +23,21 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
   std::string str = "hello world....\n";
   
-  auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
+  // auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+  // tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
 }
 
 template<server_type T>
 void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj){
-  tcp_server->write_connection(client_idx, std::move(buff));
+  const auto basic_web_server = (web_server<T>*)custom_obj;
+  const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
+  basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff));
+
+  std::cout << "readcb called\n";
+
+  const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx);
+
+  tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
 }
 
 template<server_type T>
@@ -71,7 +79,7 @@ void read_cb(int client_idx, char *buffer, unsigned int length, server<T> *tcp_s
   } else if(basic_web_server->active_websocket_connections_client_idxs.count(client_idx)) { //this bit should be just websocket frames, and we only want to hear from active websockets, not closing ones
     basic_web_server->websocket_process_read_cb(client_idx, buffer, length); //this is the main websocket callback, deals with receiving messages, and sending them too if it needs/wants to
   }else{
-    tcp_server->close_connection(client_idx);
+    basic_web_server->close_connection(client_idx);
   }
 }
 
@@ -83,6 +91,6 @@ void write_cb(int client_idx, server<T> *tcp_server, void *custom_obj){
     //if this is a websocket that is in the process of closing, it will let it close and then exit the function, otherwise we read from the function
     tcp_server->read_connection(client_idx);
   }else{
-    tcp_server->close_connection(client_idx); //for web requests you close the connection right after
+    basic_web_server->close_connection(client_idx); //for web requests you close the connection right after
   }
 }
