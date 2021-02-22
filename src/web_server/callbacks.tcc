@@ -23,8 +23,8 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
   std::string str = "hello world....\n";
   
-  // auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-  // tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
+  auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
 }
 
 template<server_type T>

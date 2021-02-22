@@ -73,7 +73,6 @@ class web_server{
 
   //writing data to connections
   void websocket_write(int ws_client_idx, std::vector<char> &&buff);
-  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
   
   //related to opening/closing connections
   std::string get_accept_header_value(std::string input); //gets the appropriate header value from the websocket connection request
@@ -93,6 +92,7 @@ class web_server{
   moodycamel::ReaderWriterQueue<void*> to_server_queue{};
   moodycamel::ReaderWriterQueue<void*> to_program_queue{};
 public:
+  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
   web_server();
 
   void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
