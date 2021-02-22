@@ -30,16 +30,18 @@ server<server_type::TLS>::server(
   int listen_port,
   std::string fullchain_location,
   std::string pkey_location,
+  void *custom_obj,
   accept_callback<server_type::TLS> a_cb,
   read_callback<server_type::TLS> r_cb,
   write_callback<server_type::TLS> w_cb,
   event_callback<server_type::TLS> e_cb,
-  void *custom_obj
+  custom_read_callback<server_type::TLS> cr_cb
 ) : server_base<server_type::TLS>(listen_port) { //call parent constructor with the port to listen on
   this->accept_cb = a_cb;
   this->read_cb = r_cb;
   this->write_cb = w_cb;
   this->event_cb = e_cb;
+  this->custom_read_cb = cr_cb;
   this->custom_obj = custom_obj;
 
   //initialise wolfSSL
@@ -93,6 +95,7 @@ void server<server_type::TLS>::server_loop(){
 
     if(req->event != event_type::ACCEPT &&
       req->event != event_type::EVENTFD &&
+      req->event != event_type::CUSTOM_READ &&
       cqe->res <= 0 &&
       clients[req->client_idx].id == req->ID
       )
@@ -192,6 +195,16 @@ void server<server_type::TLS>::server_loop(){
         case event_type::EVENTFD: {
           if(event_cb != nullptr) event_cb(this, custom_obj); //call the event callback
           event_read(); //must be called to add another read request for the eventfd
+          break;
+        }
+        case event_type::CUSTOM_READ: {
+          if(req->read_data.size() == cqe->res + req->read_amount){
+            if(custom_read_cb != nullptr) custom_read_cb(req->client_idx, (int)req->custom_info, std::move(req->read_data), this, custom_obj);
+          }else{
+            custom_read_req_continued(req, cqe->res);
+            req = nullptr; //don't want it to be deleted yet
+          }
+          break;
         }
       }
     }

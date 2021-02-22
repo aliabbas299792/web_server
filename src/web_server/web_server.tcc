@@ -18,12 +18,8 @@ bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std:
   }else{
     path = path == "" ? "public/index.html" : "public/"+path;
     
-    std::vector<char> send_buffer{};
-    
-    if((send_buffer = read_file_web(path, 200, accept_bytes)).size() != 0){
-      tcp_server->write_connection(client_idx, std::move(send_buffer));
+    if(send_file_request(client_idx, path, accept_bytes, 200))
       return true;
-    }
     return false;
   }
 }
@@ -73,36 +69,21 @@ std::string web_server<T>::get_content_type(std::string filepath){
 }
 
 template<server_type T>
-int web_server<T>::read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes){
-  int file_fd = open(filepath.c_str(), O_RDONLY);
-  if(file_fd < 0) return -1;
+bool web_server<T>::send_file_request(int client_idx, const std::string &filepath, bool accept_bytes, int response_code){
+  const auto file_fd = open(filepath.c_str(), O_RDONLY);
 
-  const auto size = get_file_size(file_fd);
-  int read_bytes = 0;
-
-  buffer.resize(reserved_bytes + size);
-
-  while(read_bytes != size){
-    io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
-
-    io_uring_prep_read(sqe, file_fd, &buffer[reserved_bytes], size - read_bytes, read_bytes); //don't read at an offset
-    io_uring_submit(&ring); //submits the event
-
-    io_uring_cqe *cqe;
-    char ret = io_uring_wait_cqe(&ring, &cqe);
-    read_bytes += cqe->res;
-
-    io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
+  std::string header_first_line{};
+  switch(response_code){
+    case 200:
+      header_first_line = "HTTP/1.1 200 OK\r\n";
+      break;
+    default:
+      header_first_line = "HTTP/1.1 404 Not Found\r\n";
   }
 
-  close(file_fd);
-  
-  return size;
-}
+  if(file_fd < 0)
+    return false;
 
-template<server_type T>
-void web_server<T>::send_file_request(int client_idx, std::string filepath, bool accept_bytes){
-  const auto file_fd = open(filepath.c_str(), O_RDONLY);
   const auto file_size = get_file_size(file_fd);
 
   const auto content_length = std::to_string(file_size);
@@ -110,7 +91,7 @@ void web_server<T>::send_file_request(int client_idx, std::string filepath, bool
 
   std::string headers = "";
   if(accept_bytes){
-    headers = "HTTP/1.1 200 OK\r\n";
+    headers = header_first_line;
     headers += content_type;
     headers += "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: ";
     headers += content_length;
@@ -118,7 +99,7 @@ void web_server<T>::send_file_request(int client_idx, std::string filepath, bool
     headers += content_length;
     headers += "/";
   }else{
-    headers = "HTTP/1.1 200 OK\r\n";
+    headers = header_first_line;
     headers += content_type;
     headers += "Content-Length: ";
   }
@@ -128,56 +109,10 @@ void web_server<T>::send_file_request(int client_idx, std::string filepath, bool
   std::vector<char> send_buffer(file_size + headers.size());
 
   std::memcpy(&send_buffer[0], headers.c_str(), headers.size());
-}
-
-template<server_type T>
-std::vector<char> web_server<T>::read_file_web(std::string filepath, int responseCode, bool accept_bytes){
-  auto header_first_line = "";
   
-  switch(responseCode){
-    case 200:
-      header_first_line = "HTTP/1.1 200 OK\r\n";
-      break;
-    default:
-      header_first_line = "HTTP/1.1 404 Not Found\r\n";
-  }
+  tcp_server->custom_read_req(file_fd, file_size, client_idx, std::move(send_buffer), headers.size());
 
-  const auto content_type = get_content_type(filepath);
-  const auto reserved_bytes = 200; //I'm estimating, header is probably going to be up to 200 bytes
-
-  std::vector<char> buffer{};
-  const auto size = read_file(filepath, buffer, reserved_bytes);
-
-  if(size < 0) return std::vector<char>{}; //return an empty array if the file was not found (negative length)
-
-  const auto content_length = std::to_string(size);
-
-  std::string headers = "";
-  if(accept_bytes){
-    headers = header_first_line;
-    headers += content_type;
-    headers += "Accept-Ranges: bytes\r\nContent-Length: ";
-    headers += content_length;
-    headers += "\r\nRange: bytes=0-";
-    headers += content_length;
-    headers += "/";
-    headers += content_length;
-    headers += "\r\nConnection:";
-  }else{
-    headers = header_first_line;
-    headers += content_type;
-    headers += "Content-Length: ";
-    headers += content_length;
-    headers += "\r\nConnection:";
-  }
-
-  const auto header_last = "Keep-Alive\r\n\r\n"; //last part of the header
-  
-  std::memset(&buffer[0], 32, reserved_bytes); //this sets the entire header section in the buffer to be whitespace
-  std::memcpy(&buffer[0], headers.c_str(), headers.size()); //this copies the first bit of the header to the beginning of the buffer
-  std::memcpy(&buffer[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
-
-  return buffer;
+  return true;
 }
 
 template<server_type T>

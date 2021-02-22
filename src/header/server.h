@@ -29,13 +29,14 @@
 #define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj
 #define WRITE_CB_PARAMS int client_idx, ulong custom_info, server<T> *tcp_server, void *custom_obj
 #define EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj
+#define CUSTOM_READ_CB_PARAMS int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
 constexpr int READ_SIZE = 8192; //how much one read request should read
 constexpr int QUEUE_DEPTH = 256; //the maximum number of events which can be submitted to the io_uring submission queue ring at once, you can have many more pending requests though
 constexpr int READ_BLOCK_SIZE = 8192; //how much to read from a file at once
 
-enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE, EVENTFD };
+enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE, EVENTFD, CUSTOM_READ };
 enum class server_type { TLS, NON_TLS };
 
 template<server_type T>
@@ -60,6 +61,9 @@ using write_callback = void(*)(WRITE_CB_PARAMS);
 
 template<server_type T>
 using event_callback = void(*)(EVENT_CB_PARAMS);
+
+template<server_type T>
+using custom_read_callback = void(*)(CUSTOM_READ_CB_PARAMS);
 
 struct request {
   event_type event;
@@ -122,6 +126,7 @@ class server_base {
     read_callback<T> read_cb = nullptr;
     write_callback<T> write_cb = nullptr;
     event_callback<T> event_cb = nullptr;
+    custom_read_callback<T> custom_read_cb = nullptr;
 
     int thread_id = -1;
     io_uring ring;
@@ -138,7 +143,7 @@ class server_base {
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
 
-    void custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff = {}, size_t read_amount = 0);
+    void custom_read_req_continued(request *req, size_t last_read); //to finish off partial reads
     
     int setup_client(int client_idx);
 
@@ -167,6 +172,9 @@ class server_base {
 
     void read_connection(int client_idx, ulong custom_info = 0);
 
+    //to read for a custom fd and be notified via the CUSTOM_READ event
+    void custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff = {}, size_t read_amount = 0);
+
     void notify_event();
 };
 
@@ -179,12 +187,13 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     
     void server_loop(); //the main server loop
   public:
-    server(int listen_port, 
+    server(int listen_port,
+      void *custom_obj = nullptr,
       accept_callback<server_type::NON_TLS> a_cb = nullptr,
       read_callback<server_type::NON_TLS> r_cb = nullptr,
       write_callback<server_type::NON_TLS> w_cb = nullptr,
       event_callback<server_type::NON_TLS> e_cb = nullptr,
-      void *custom_obj = nullptr
+      custom_read_callback<server_type::NON_TLS> cr_cb = nullptr
     );
     
     template<typename U>
@@ -223,11 +232,12 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       int listen_port,
       std::string fullchain_location,
       std::string pkey_location,
+      void *custom_obj = nullptr,
       accept_callback<server_type::TLS> a_cb = nullptr,
       read_callback<server_type::TLS> r_cb = nullptr,
       write_callback<server_type::TLS> w_cb = nullptr,
       event_callback<server_type::TLS> e_cb = nullptr,
-      void *custom_obj = nullptr
+      custom_read_callback<server_type::TLS> cr_cb = nullptr
     );
     
     template<typename U>

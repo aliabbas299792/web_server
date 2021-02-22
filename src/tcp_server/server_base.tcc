@@ -186,9 +186,25 @@ void server_base<T>::custom_read_req(int fd, size_t to_read, int client_idx, std
   req->read_amount = read_amount;
   req->read_data = buff;
   req->custom_info = fd;
+  req->event = event_type::CUSTOM_READ;
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_read(sqe, fd, &(req->read_data[0]), read_amount, 0);
+  io_uring_prep_read(sqe, fd, &(req->read_data[read_amount]), READ_SIZE, 0);
+  io_uring_sqe_set_data(sqe, req);
+  io_uring_submit(&ring); //submits the event
+}
+
+template<server_type T>
+void server_base<T>::custom_read_req_continued(request *req, size_t last_read){
+  req->read_amount += last_read;
+
+  const auto initial_offset = req->read_data.size() - req->total_length;
+  //the buffer is big enough to hold header data, but the amount we want to read is the total_length
+  //but the initial read_amount is the offset of the header data, so we find the initial offset like this
+
+  io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+  //the fd is stored in the custom info bit
+  io_uring_prep_read(sqe, (int)req->custom_info, &(req->read_data[req->read_amount]), READ_SIZE, req->read_amount - initial_offset);
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 }

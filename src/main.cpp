@@ -17,11 +17,12 @@ int main(){
       std::stoi(config_data["TLS_PORT"]),
       config_data["FULLCHAIN"],
       config_data["PKEY"],
+      &basic_web_server,
       accept_cb<server_type::TLS>,
       read_cb<server_type::TLS>,
       write_cb<server_type::TLS>,
       event_cb<server_type::TLS>,
-      &basic_web_server
+      custom_read_cb<server_type::TLS>
     ); //pass function pointers and a custom object
 
     basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
@@ -43,11 +44,12 @@ int main(){
 
     plain_server tcp_server(
       std::stoi(config_data["PORT"]),
+      &basic_web_server,
       accept_cb<server_type::NON_TLS>,
       read_cb<server_type::NON_TLS>,
       write_cb<server_type::NON_TLS>,
       event_cb<server_type::NON_TLS>,
-      &basic_web_server
+      custom_read_cb<server_type::NON_TLS>
     ); //pass function pointers and a custom object
     
     basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server

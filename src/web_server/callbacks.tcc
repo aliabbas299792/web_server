@@ -21,6 +21,11 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 }
 
 template<server_type T>
+void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj){
+  tcp_server->write_connection(client_idx, std::move(buff));
+}
+
+template<server_type T>
 void read_cb(int client_idx, char *buffer, unsigned int length, ulong custom_info, server<T> *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
 
@@ -56,8 +61,7 @@ void read_cb(int client_idx, char *buffer, unsigned int length, ulong custom_inf
         !basic_web_server->get_process(path, accept_bytes, sec_websocket_key, client_idx)
       )
     {
-      auto send_buffer = basic_web_server->read_file_web("public/404.html", 400);
-      tcp_server->write_connection(client_idx, std::move(send_buffer));
+      basic_web_server->send_file_request(client_idx, "public/404.html", false, 400); //sends 404 request, should be cached if possible
     }
   } else if(basic_web_server->all_websocket_connections.count(ws_client_idx)) { //this bit should be just websocket frames
     basic_web_server->websocket_process_read_cb(ws_client_idx, buffer, length); //this is the main websocket callback, deals with receiving messages, and sending them too if it needs/wants to
