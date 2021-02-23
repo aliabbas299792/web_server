@@ -20,6 +20,10 @@ enum websocket_non_control_opcodes {
   pong = 0xA
 };
 
+enum class message_type {
+  websocket_broadcast
+};
+
 struct receiving_data_info{
   receiving_data_info(int length = -1, std::vector<uchar> buffer = {}) : length(length), buffer(buffer) {}
   int length = -1;
@@ -98,6 +102,8 @@ public:
   void close_connection(int client_idx);
 
   std::vector<tcp_client> tcp_clients{}; //storing additional data related to the client_idxs passed to this layer
+
+  // void post_message(message_type type, )
   
   //
   ////http public methods

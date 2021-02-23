@@ -224,18 +224,10 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     );
     
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
-      if(num_clients > 0){
-        auto data = new multi_write(std::move(buff), num_clients);
-
-        for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
-          auto &client = clients[*client_idx_ptr];
-          client.send_data.emplace(data);
-          if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
-            add_write_req(*client_idx_ptr, event_type::WRITE, &(data->buff[0]), data->buff.size());
-        }
-      }
-    }
+    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff);
+    
+    template<typename U>
+    void broadcast_message(U begin, U end, int num_clients, char *buff, size_t length); //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
 
     void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
     void write_connection(int client_idx, char *buff, size_t length); //writing but using a char pointer, doesn't do anything to the data
@@ -270,18 +262,10 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     );
     
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
-      if(num_clients > 0){
-        auto data = new multi_write(std::move(buff), num_clients);
-
-        for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
-          auto &client = clients[*client_idx_ptr];
-          client.send_data.emplace(data);
-          if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
-            wolfSSL_write(client.ssl, &(data->buff[0]), data->buff.size());
-        }
-      }
-    }
+    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff);
+    
+    template<typename U>
+    void broadcast_message(U begin, U end, int num_clients, char *buff, size_t length); //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
 
     void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
     void write_connection(int client_idx, char *buff, size_t length); //writing but using a char pointer, doesn't do anything to the data

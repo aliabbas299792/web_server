@@ -91,6 +91,32 @@ void server<server_type::TLS>::tls_accept(int client_idx){
   wolfSSL_accept(ssl); //initialise the wolfSSL accept procedure
 }
 
+template<typename U>
+void server<server_type::TLS>::broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
+  if(num_clients > 0){
+    auto data = new multi_write(std::move(buff), num_clients);
+
+    for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
+      auto &client = clients[(int)*client_idx_ptr];
+      client.send_data.emplace(data);
+      if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
+        wolfSSL_write(client.ssl, &(data->buff[0]), data->buff.size());
+    }
+  }
+}
+
+template<typename U>
+void server<server_type::TLS>::broadcast_message(U begin, U end, int num_clients, char *buff, size_t length){
+  if(num_clients > 0){
+    for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
+      auto &client = clients[(int)*client_idx_ptr];
+      client.send_data.emplace(buff, length);
+      if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
+        wolfSSL_write(client.ssl, buff, length);
+    }
+  }
+}
+
 void server<server_type::TLS>::server_loop(){
   running_server = true;
 

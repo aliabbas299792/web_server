@@ -51,9 +51,6 @@ public:
       const auto new_timestamp = get_timestamp(filepath.c_str());
       bool outdated_file = item.timestamp.tv_sec < new_timestamp.tv_sec || (item.timestamp.tv_sec == new_timestamp.tv_sec && item.timestamp.tv_nsec < new_timestamp.tv_nsec);
 
-      if(outdated_file)
-        std::cout << "we have outdated file\n";
-
       if(item.next_item_idx == -1){ //cannot promote highest one more
         if(!outdated_file){
           return { true, &(cache_buffer[current_idx].buffer[0]), cache_buffer[current_idx].buffer.size() };
