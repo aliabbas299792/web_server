@@ -7,6 +7,17 @@ void fatal_error(std::string error_message){
   exit(1);
 }
 
+timespec get_timestamp(const char *filepath){
+  int fd = open(filepath, O_RDONLY);
+
+  stat_struct file_stat;
+
+  if(fstat(fd, &file_stat) < 0)
+    fatal_error("file stat");
+  
+  return file_stat.st_mtim; //nanosecond time of last modification
+}
+
 uint64_t get_file_size(int file_fd){
   stat_struct file_stat;
 
