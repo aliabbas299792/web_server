@@ -59,7 +59,7 @@ public:
           if(item.prev_item_idx != -1)
             cache_buffer[item.prev_item_idx].next_item_idx = -1;
           
-          close(item.fd); //remember to clsoe files
+          close(item.fd); //remember to close files
           free_idxs.insert(current_idx);
           item = cache_item();
 
