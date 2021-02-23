@@ -25,15 +25,15 @@ enum class message_type {
 };
 
 struct receiving_data_info{
-  receiving_data_info(int length = -1, std::vector<uchar> buffer = {}) : length(length), buffer(buffer) {}
+  receiving_data_info(int length = -1, std::vector<char> buffer = {}) : length(length), buffer(buffer) {}
   int length = -1;
-  std::vector<uchar> buffer{};
+  std::vector<char> buffer{};
 };
 
 struct ws_client {
   int currently_writing = 0; //items it is currently writing
   bool close = false; //should this socket be closed
-  std::vector<uchar> websocket_frames{};
+  std::vector<char> websocket_frames{};
   receiving_data_info receiving_data{};
   int id = 0; //in case we use io_uring later
   int client_idx{}; //for the TCP/TLS layer
@@ -67,8 +67,8 @@ class web_server{
   
   //reading data from connections
   ulong get_ws_frame_length(const char *buffer); //helper function which reads the websocket header to get the length of the message
-  std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data); //decodes a single full websocket frame
-  std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int ws_client_idx); //gets any full websocket frames possible
+  std::pair<int, std::vector<char>> decode_websocket_frame(std::vector<char> &&data); //decodes a single full websocket frame
+  std::pair<int, std::vector<std::vector<char>>> get_ws_frames(char *buffer, int length, int ws_client_idx); //gets any full websocket frames possible
   std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
 
   //writing data to connections
