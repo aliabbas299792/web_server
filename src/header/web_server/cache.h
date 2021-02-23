@@ -13,6 +13,7 @@ struct cache_item {
   int lock_number{}; //number of times this has been locked, if non zero then this item should NOT be removed (in use)
   int next_item_idx = -1;
   int prev_item_idx = -1;
+  int fd{};
 };
 
 struct cache_fetch_item {
@@ -48,7 +49,7 @@ public:
 
       client_idx_to_cache_idx[client_idx] = current_idx; //mapping to the idx that the client_idx is locking
 
-      const auto new_timestamp = get_timestamp(filepath.c_str());
+      const auto new_timestamp = get_timestamp(item.fd);
       bool outdated_file = item.timestamp.tv_sec < new_timestamp.tv_sec || (item.timestamp.tv_sec == new_timestamp.tv_sec && item.timestamp.tv_nsec < new_timestamp.tv_nsec);
 
       if(item.next_item_idx == -1){ //cannot promote highest one more
@@ -58,6 +59,7 @@ public:
           if(item.prev_item_idx != -1)
             cache_buffer[item.prev_item_idx].next_item_idx = -1;
           
+          close(item.fd); //remember to clsoe files
           free_idxs.insert(current_idx);
           item = cache_item();
 
@@ -79,6 +81,8 @@ public:
       }
 
       if(outdated_file){
+        close(item.fd); //remember to close files
+
         free_idxs.insert(current_idx);
         item = cache_item();
 
@@ -97,7 +101,7 @@ public:
     }
   }
   
-  bool try_insert_item(int client_idx, const std::string &filepath, std::vector<char> &&buff){
+  bool try_insert_item(int client_idx, const std::string &filepath, std::vector<char> &&buff, int fd){
     int current_idx = -1;
 
     if(free_idxs.size()){ //if free idxs available
@@ -111,6 +115,8 @@ public:
 
       if(!lowest_item.lock_number){ //only if the lock_number is 0, then this item can be inserted in place of the old one (otherwise the old one is still in use)
         const auto new_lowest_idx = lowest_item.next_item_idx;
+
+        close(lowest_item.fd); //remember to close files
 
         cache_buffer[lowest_item.next_item_idx].prev_item_idx = -1; //2nd lowest is now lowest
         cache_buffer[lowest_idx] = cache_item(); //we are reusing the lowest item
@@ -132,7 +138,8 @@ public:
       filepath_to_cache_idx[filepath] = current_idx;
       cache_idx_to_filepath[current_idx] = filepath;
 
-      current_item.timestamp = get_timestamp(filepath.c_str());
+      current_item.fd = fd;
+      current_item.timestamp = get_timestamp(fd);
       current_item.prev_item_idx = highest_idx; //promote to highest
       current_item.next_item_idx = -1;
       highest_idx = current_idx; //new highest position

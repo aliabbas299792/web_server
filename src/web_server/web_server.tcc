@@ -2,11 +2,6 @@
 #include "../header/utility.h"
 
 template<server_type T>
-web_server<T>::web_server(){
-  io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
-}
-
-template<server_type T>
 bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
   char *saveptr = nullptr;
   const char* token = strtok_r((char*)path.c_str(), "/", &saveptr);

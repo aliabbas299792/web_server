@@ -7,9 +7,7 @@ void fatal_error(std::string error_message){
   exit(1);
 }
 
-timespec get_timestamp(const char *filepath){
-  int fd = open(filepath, O_RDONLY);
-
+timespec get_timestamp(int fd){
   stat_struct file_stat;
 
   if(fstat(fd, &file_stat) < 0)
@@ -48,6 +46,8 @@ std::unordered_map<std::string, std::string> read_config(){
   while(read_amount != file_size)
     read_amount += read(file_fd, &config[0], file_size - read_amount);
   config[read_amount] = '\0';  //sets the final byte to NULL so that strtok_r stops there
+
+  close(file_fd);
   
   std::vector<std::vector<char>> lines;
   char *begin_ptr = &config[0];

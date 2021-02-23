@@ -52,7 +52,6 @@ class web_server{
   //
   ////generally useful functions and variables
   //
-  io_uring ring;
   server<T> *tcp_server = nullptr;
 
   std::string get_content_type(std::string filepath);
@@ -92,7 +91,7 @@ class web_server{
   moodycamel::ReaderWriterQueue<void*> to_server_queue{};
   moodycamel::ReaderWriterQueue<void*> to_program_queue{};
 public:
-  web_server();
+  web_server() {};
 
   void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
 
