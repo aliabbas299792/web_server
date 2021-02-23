@@ -30,12 +30,21 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 template<server_type T>
 void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
-  const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
-  basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff));
 
-  const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx, basic_web_server->tcp_clients[client_idx]);
+  std::cout << fd << "\n";
+  if(fd == basic_web_server->web_cache.inotify_fd){
+    basic_web_server->web_cache.inotify_event_handler(reinterpret_cast<inotify_event*>(&buff[0])->wd);
+    tcp_server->custom_read_req(basic_web_server->web_cache.inotify_fd, sizeof(inotify_event)); //always read from inotify_fd - we only read size of event, since we monitor files
+  }else{
+    close(fd); //close the file fd finally, since we've read what we needed to
 
-  tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
+    const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
+    basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff));
+
+    const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx, basic_web_server->tcp_clients[client_idx]);
+
+    tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
+  }
 }
 
 template<server_type T>

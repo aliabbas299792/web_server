@@ -199,7 +199,7 @@ class server_base {
     void read_connection(int client_idx);
 
     //to read for a custom fd and be notified via the CUSTOM_READ event
-    void custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff = {}, size_t read_amount = 0);
+    void custom_read_req(int fd, size_t to_read, int client_idx = -1, std::vector<char> &&buff = {}, size_t read_amount = 0);
 
     void notify_event();
 };

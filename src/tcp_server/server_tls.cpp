@@ -236,6 +236,7 @@ void server<server_type::TLS>::server_loop(){
           break;
         }
         case event_type::CUSTOM_READ: {
+          if(cqe->res < 0) break;
           if(req->read_data.size() == cqe->res + req->read_amount){
             if(custom_read_cb != nullptr) custom_read_cb(req->client_idx, (int)req->custom_info, std::move(req->read_data), this, custom_obj);
           }else{

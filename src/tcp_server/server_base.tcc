@@ -179,13 +179,14 @@ int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer
 template<server_type T>
 void server_base<T>::custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff, size_t read_amount){
   request *req = new request();
-  req->ID = clients[client_idx].id;
   req->client_idx = client_idx;
   req->total_length = to_read;
   req->read_amount = read_amount;
   req->read_data = buff;
   req->custom_info = fd;
   req->event = event_type::CUSTOM_READ;
+
+  req->read_data.resize(to_read + read_amount); //needs this much at least
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_read(sqe, fd, &(req->read_data[read_amount]), READ_SIZE, 0);
