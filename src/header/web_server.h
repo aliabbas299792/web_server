@@ -35,7 +35,7 @@ struct ws_client {
 struct tcp_client {
   std::string last_requested_read_filepath{}; //the last filepath it was asked to read
   int ws_client_idx{};
-  std::string last_requested_filepath{}; //the last file requested in general
+  bool using_file = false;
 };
 
 template<server_type T>
@@ -49,7 +49,7 @@ public:
 struct cache_item {
   std::vector<char> buffer{};
   uint64_t timestamp{};
-  // int lock_number{}; //number of times this has been locked, if non zero then this item should NOT be removed (in use)
+  int lock_number{}; //number of times this has been locked, if non zero then this item should NOT be removed (in use)
   int next_item_idx = -1;
   int prev_item_idx = -1;
 };
@@ -77,10 +77,13 @@ public:
       free_idxs.insert(i);
   }
 
-  cache_fetch_item fetch_item(const std::string &filepath, int client_idx){
+  cache_fetch_item fetch_item(const std::string &filepath, int client_idx, tcp_client &client){
     if(filepath_to_cache_idx.count(filepath)) {
       auto current_idx = filepath_to_cache_idx[filepath];
       auto &item = cache_buffer[current_idx];
+
+      client.using_file = true; //we are using a file, we have incremented the lock number once
+      cache_buffer[current_idx].lock_number++;
 
       client_idx_to_cache_idx[client_idx] = current_idx; //mapping to the idx that the client_idx is locking
 
@@ -123,16 +126,19 @@ public:
         lowest_idx = current_idx;
     }else{
       auto &lowest_item = cache_buffer[lowest_idx];
-      const auto new_lowest_idx = lowest_item.next_item_idx;
 
-      cache_buffer[lowest_item.next_item_idx].prev_item_idx = -1; //2nd lowest is now lowest
-      cache_buffer[lowest_idx] = cache_item(); //we are reusing the lowest item
+      if(!lowest_item.lock_number){ //only if the lock_number is 0, then this item can be inserted in place of the old one (otherwise the old one is still in use)
+        const auto new_lowest_idx = lowest_item.next_item_idx;
 
-      filepath_to_cache_idx.erase(cache_idx_to_filepath[lowest_idx]);
-      cache_idx_to_filepath.erase(lowest_idx);
-      
-      current_idx = lowest_idx;
-      lowest_idx = new_lowest_idx;
+        cache_buffer[lowest_item.next_item_idx].prev_item_idx = -1; //2nd lowest is now lowest
+        cache_buffer[lowest_idx] = cache_item(); //we are reusing the lowest item
+
+        filepath_to_cache_idx.erase(cache_idx_to_filepath[lowest_idx]);
+        cache_idx_to_filepath.erase(lowest_idx);
+        
+        current_idx = lowest_idx;
+        lowest_idx = new_lowest_idx;
+      }
     }
 
     if(current_idx != -1){
@@ -154,9 +160,12 @@ public:
     }
   }
 
-  void finished_with_item(int client_idx){
-    const auto cache_idx = client_idx_to_cache_idx[client_idx];
-    // cache_buffer[cache_idx].lock_number--;
+  void finished_with_item(int client_idx, tcp_client &client){ //requires a pointer to the client object, for the using_file stuff - to ensure it's not decremented too many times
+    if(client.using_file){
+      const auto cache_idx = client_idx_to_cache_idx[client_idx];
+      cache_buffer[cache_idx].lock_number--;
+      client.using_file = false;
+    }
   }
 };
 
@@ -227,7 +236,7 @@ public:
   //checking if it's a valid HTTP request
   bool is_valid_http_req(const char* buff, int length);
   //the cache
-  cache<3> web_cache{};
+  cache<5> web_cache{}; //cache of 5 items
   
   //
   ////public websocket stuff

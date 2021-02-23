@@ -33,9 +33,7 @@ void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> 
   const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
   basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff));
 
-  std::cout << "readcb called\n";
-
-  const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx);
+  const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx, basic_web_server->tcp_clients[client_idx]);
 
   tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
 }

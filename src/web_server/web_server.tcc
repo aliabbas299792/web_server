@@ -110,7 +110,7 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
 
   std::memcpy(&send_buffer[0], headers.c_str(), headers.size());
   
-  const auto ret_data = web_cache.fetch_item(filepath, client_idx);
+  const auto ret_data = web_cache.fetch_item(filepath, client_idx, tcp_clients[client_idx]);
 
   if(ret_data.found){
     tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
@@ -118,8 +118,6 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
     tcp_clients[client_idx].last_requested_read_filepath =  filepath; //so that when the file is read, it will be stored with the correct file path
     tcp_server->custom_read_req(file_fd, file_size, client_idx, std::move(send_buffer), headers.size());
   }
-
-
 
   return true;
 }
@@ -138,7 +136,8 @@ void web_server<T>::new_tcp_client(int client_idx){
 
 template<server_type T>
 void web_server<T>::kill_tcp_client(int client_idx){
-  web_cache.finished_with_item(client_idx);
+  web_cache.finished_with_item(client_idx, tcp_clients[client_idx]);
+  tcp_clients[client_idx].using_file = false;
 }
 
 template<server_type T>
