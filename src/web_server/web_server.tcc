@@ -104,7 +104,7 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
   headers += "\r\nConnection:Keep-Alive\r\n";
 
   if(!cache_data.found)
-    headers += "Cache-Control: must-revalidate\r\n";
+    headers += "Cache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\nExpires: 0\r\n";
   
   headers += "\r\n";
 
