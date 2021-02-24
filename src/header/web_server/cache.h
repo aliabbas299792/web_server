@@ -144,7 +144,7 @@ public:
       filepath_to_cache_idx[filepath] = current_idx;
       cache_idx_to_filepath[current_idx] = filepath;
 
-      current_item.watch = inotify_add_watch(inotify_fd, "README.md", IN_MODIFY | IN_OPEN | IN_CLOSE);
+      current_item.watch = inotify_add_watch(inotify_fd, filepath.c_str(), IN_MODIFY);
       watch_to_cache_idx[current_item.watch] = current_idx;
 
       current_item.prev_item_idx = highest_idx; //promote to highest
@@ -160,7 +160,7 @@ public:
   void inotify_event_handler(int watch){ //we are only monitoring for events which outdate files we are monitoring
     if(watch_to_cache_idx.count(watch)){
       const auto cache_idx = watch_to_cache_idx[watch];
-      if(cache_buffer.size() < cache_idx){
+      if(cache_idx < cache_buffer.size()){
         cache_buffer[cache_idx].outdated = true;
       }
     }

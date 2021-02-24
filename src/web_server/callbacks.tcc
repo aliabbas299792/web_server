@@ -31,7 +31,6 @@ template<server_type T>
 void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
 
-  std::cout << fd << "\n";
   if(fd == basic_web_server->web_cache.inotify_fd){
     basic_web_server->web_cache.inotify_event_handler(reinterpret_cast<inotify_event*>(&buff[0])->wd);
     tcp_server->custom_read_req(basic_web_server->web_cache.inotify_fd, sizeof(inotify_event)); //always read from inotify_fd - we only read size of event, since we monitor files

@@ -83,6 +83,8 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
 
   const auto content_length = std::to_string(file_size);
   const auto content_type = get_content_type(filepath);
+  
+  const auto cache_data = web_cache.fetch_item(filepath, client_idx, tcp_clients[client_idx]);
 
   std::string headers = "";
   if(accept_bytes){
@@ -99,16 +101,19 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
     headers += "Content-Length: ";
   }
   headers += content_length;
-  headers += "\r\nConnection:Keep-Alive\r\n\r\n";
+  headers += "\r\nConnection:Keep-Alive\r\n";
+
+  if(!cache_data.found)
+    headers += "Cache-Control: must-revalidate\r\n";
+  
+  headers += "\r\n";
 
   std::vector<char> send_buffer(file_size + headers.size());
 
   std::memcpy(&send_buffer[0], headers.c_str(), headers.size());
-  
-  const auto ret_data = web_cache.fetch_item(filepath, client_idx, tcp_clients[client_idx]);
 
-  if(ret_data.found){
-    tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
+  if(cache_data.found){
+    tcp_server->write_connection(client_idx, cache_data.buff, cache_data.size);
   }else{
     tcp_clients[client_idx].last_requested_read_filepath =  filepath; //so that when the file is read, it will be stored with the correct file path
     tcp_server->custom_read_req(file_fd, file_size, client_idx, std::move(send_buffer), headers.size());
