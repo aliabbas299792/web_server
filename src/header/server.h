@@ -94,7 +94,7 @@ struct write_data { //this is closer to 3 objects in 1
   write_data(std::vector<char> &&buff) : buff(buff) {}
   std::vector<char> buff;
 
-  write_data(char *buff, size_t length) : ptr_buff(buff) {}
+  write_data(char *buff, size_t length) : ptr_buff(buff), total_length(length) {}
   char *ptr_buff = nullptr; //in the case you only want to write a char* ptr - this basically trusts that you won't invalidate the pointer
   size_t total_length{}; //used in conjunction with the above
 
