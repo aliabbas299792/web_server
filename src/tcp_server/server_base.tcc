@@ -55,6 +55,8 @@ server_base<T>::server_base(int listen_port){
   listener_fd = setup_listener(listen_port); //setup the listener socket
   
   thread_id = ++current_max_id;
+
+  std::cout << "thread with id " << thread_id << " spawned\n";
 }
 
 template<server_type T>

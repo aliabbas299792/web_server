@@ -130,6 +130,8 @@ void server<server_type::TLS>::server_loop(){
       fatal_error("io_uring_wait_cqe");
     request *req = (request*)cqe->user_data;
 
+    std::cout << "event, tls, " << thread_id << "\n";
+
     if(req->event != event_type::ACCEPT &&
       req->event != event_type::EVENTFD &&
       req->event != event_type::CUSTOM_READ &&

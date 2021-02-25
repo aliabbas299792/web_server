@@ -1,14 +1,10 @@
 #ifndef TCP_SERVER_CALLBACKS
 #define TCP_SERVER_CALLBACKS
 
-#include "web_server/web_server.h"
-
-using tls_server = server<server_type::TLS>;
-using plain_server = server<server_type::NON_TLS>;
-using tls_web_server = web_server<server_type::TLS>;
-using plain_web_server = web_server<server_type::NON_TLS>;
-
 using uchar = unsigned char;
+
+template<server_type T>
+class web_server;
 
 template<server_type T>
 void accept_cb(ACCEPT_CB_PARAMS);

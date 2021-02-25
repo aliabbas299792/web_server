@@ -4,6 +4,8 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
+#include <sys/inotify.h>
+
 template<server_type T>
 void accept_cb(int client_idx, server<T> *tcp_server, void *custom_obj){ //the accept callback
   const auto basic_web_server = (web_server<T>*)custom_obj;
