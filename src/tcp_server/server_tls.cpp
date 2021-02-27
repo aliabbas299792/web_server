@@ -233,7 +233,7 @@ void server<server_type::TLS>::server_loop(){
           break;
         }
         case event_type::EVENTFD: {
-          if(event_cb != nullptr) event_cb(this, custom_obj); //call the event callback
+          if(event_cb != nullptr) event_cb(this, custom_obj, std::move(req->read_data)); //call the event callback
           event_read(); //must be called to add another read request for the eventfd
           break;
         }

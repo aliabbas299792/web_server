@@ -198,6 +198,9 @@ void server_base<T>::custom_read_req(int fd, size_t to_read, int client_idx, std
 
 template<server_type T>
 void server_base<T>::custom_read_req_continued(request *req, size_t last_read){
+  if((long long)last_read < 0)
+    fatal_error("Read req continued, negative last read\n");
+
   req->read_amount += last_read;
 
   const auto initial_offset = req->read_data.size() - req->total_length;

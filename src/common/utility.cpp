@@ -1,6 +1,9 @@
 #include "../header/utility.h"
 
 #include <malloc.h>
+#include "../header/web_server/web_server.h"
+
+central_web_server *global_web_server = nullptr; //the extern definition
 
 void fatal_error(std::string error_message){
   perror(std::string("Fatal Error: " + error_message).c_str());
@@ -14,7 +17,7 @@ uint64_t get_file_size(int file_fd){
     fatal_error("file stat");
   
   if(S_ISBLK(file_stat.st_mode)){
-    uint long long size_bytes;
+    size_t size_bytes;
     if(ioctl(file_fd, BLKGETSIZE64, &size_bytes) != 0)
       fatal_error("file stat ioctl");
     
@@ -74,5 +77,6 @@ std::unordered_map<std::string, std::string> read_config(){
 
 void sigint_handler(int sig_number){
   std::cout << "\nShutting down...\n";
-  exit(0);
+  central_web_server::get_instance().~central_web_server(); //call destructor for singleton
+  // exit(0);
 }

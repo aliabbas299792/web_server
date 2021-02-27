@@ -29,7 +29,7 @@
 #define CLOSE_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
 #define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj
 #define WRITE_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
-#define EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj
+#define EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj, std::vector<char> &&buff
 #define CUSTOM_READ_CB_PARAMS int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance
@@ -202,6 +202,10 @@ class server_base {
     void custom_read_req(int fd, size_t to_read, int client_idx = -1, std::vector<char> &&buff = {}, size_t read_amount = 0);
 
     void notify_event();
+
+    ~server_base(){
+      io_uring_queue_exit(&ring);
+    }
 };
 
 template<>

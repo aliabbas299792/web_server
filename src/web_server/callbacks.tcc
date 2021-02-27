@@ -1,5 +1,6 @@
 #include "../header/callbacks.h"
 #include "../header/utility.h"
+#include "../header/web_server/cache.h"
 
 #include <openssl/sha.h>
 #include <openssl/evp.h>
@@ -19,7 +20,7 @@ void close_cb(int client_idx, server<T> *tcp_server, void *custom_obj){ //the ac
 }
 
 template<server_type T>
-void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
+void event_cb(server<T> *tcp_server, void *custom_obj, std::vector<char> &&buff){ //the accept callback
   const auto basic_web_server = (web_server<T>*)custom_obj;
   const auto &client_idxs = basic_web_server->active_websocket_connections_client_idxs;
 

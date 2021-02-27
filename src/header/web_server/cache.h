@@ -8,6 +8,7 @@
 #include <sys/inotify.h>
 
 #include "common_structs_enums.h"
+#include "central_web_server.h"
 
 struct cache_item {
   std::vector<char> buffer{};
@@ -38,9 +39,11 @@ private:
 
   std::unordered_map<int, int> watch_to_cache_idx{};
 public:
-  const int inotify_fd = inotify_init(); //public as we need to read from it
+  int inotify_fd = -1; //public as we need to read from it
 
   cache(){ //only works for cache's which are greater than 1 in size
+    inotify_fd = central_web_server::get_instance().get_inotify_fd(); //initialise inotify
+
     for(int i = 0; i < cache_buffer.size(); i++)
       free_idxs.insert(i);
   }
