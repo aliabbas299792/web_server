@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(Liburing_Server)
+project(webserver)
 
 set(CMAKE_CXX_STANDARD 11)
-
-#this recursively gets all .cpp and .h files
-file(GLOB_RECURSE sourceFiles "*.cpp" "*.h" "*.tcc")
 
 # set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 # set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 
-add_executable(Liburing_Server ${sourceFiles})
+set( SOURCE_FILE_LIST ${SOURCE_FILES} ) # SOURCE_FILES is a space separated list of files passed in on the command line
+separate_arguments(SOURCE_FILE_LIST) # the string list is made into an actual list
+
+add_executable(webserver ${SOURCE_FILE_LIST}) # the list is passed here to actually set the source files
 #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG=1")
-target_link_libraries(Liburing_Server -luring -lcrypto -lwolfssl -lpthread)
+target_link_libraries(webserver -luring -lcrypto -lwolfssl -lpthread)
