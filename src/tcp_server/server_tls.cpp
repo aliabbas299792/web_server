@@ -1,6 +1,19 @@
 #include "../header/server.h"
 #include "../header/utility.h"
 
+#include <thread>
+
+// define static stuff
+std::vector<server<server_type::TLS>*> server<server_type::TLS>::tls_servers{};
+std::mutex server<server_type::TLS>::tls_server_vector_access{};
+
+void server<server_type::TLS>::kill_all_servers() {
+  std::unique_lock<std::mutex> tls_access_lock(tls_server_vector_access);
+  for(const auto server : tls_servers)
+    server->kill_server();
+  std::this_thread::sleep_for(std::chrono::milliseconds(500)); // .5s should be enough to kill off all those servers
+}
+
 void server<server_type::TLS>::close_connection(int client_idx) {
   auto &client = clients[client_idx];
   wolfSSL_shutdown(client.ssl);
@@ -59,6 +72,9 @@ server<server_type::TLS>::server(
   wolfSSL_CTX_SetIOSend(wolfssl_ctx, tls_send);
 
   std::cout << "TLS will be used\n";
+
+  std::unique_lock<std::mutex> access_lock(tls_server_vector_access);
+  tls_servers.push_back(this); // basically so that anything which wants to manage all of the server at once, can
 }
 
 void server<server_type::TLS>::tls_accept(int client_idx){

@@ -1,6 +1,19 @@
 #include "../header/server.h"
 #include "../header/utility.h"
 
+#include <thread>
+
+// define static stuff
+std::vector<server<server_type::NON_TLS>*> server<server_type::NON_TLS>::non_tls_servers{};
+std::mutex server<server_type::NON_TLS>::non_tls_server_vector_access{};
+
+void server<server_type::NON_TLS>::kill_all_servers() {
+  std::unique_lock<std::mutex> non_tls_access_lock(non_tls_server_vector_access);
+  for(const auto server : non_tls_servers)
+    server->kill_server();
+  std::this_thread::sleep_for(std::chrono::milliseconds(300)); // .3s should be enough to kill off all those servers
+}
+
 server<server_type::NON_TLS>::server(
   int listen_port,
   accept_callback<server_type::NON_TLS> a_cb,
@@ -12,6 +25,9 @@ server<server_type::NON_TLS>::server(
   this->read_cb = r_cb;
   this->write_cb = w_cb;
   this->custom_obj = custom_obj;
+
+  std::unique_lock<std::mutex> access_lock(non_tls_server_vector_access);
+  non_tls_servers.push_back(this); // basically so that anything which wants to manage all of the server at once, can
 }
 
 void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info) {
@@ -88,10 +104,6 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
       if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj); //call the write callback
       req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
       break;
-    }
-    case event_type::EVENTFD: {
-      std::cout << "EVENTFD thing\n";
-      event_read(); //must be called to add another read request for the eventfd
     }
   }
 }

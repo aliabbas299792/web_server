@@ -19,15 +19,28 @@ int main(){
       tcp_server.start();
     });
 
+    std::vector<std::thread> threads{};
+    for(int i = 0; i < 5; i++){
+      threads.emplace_back([&](){
+        server<server_type::TLS> tcp_server(std::stoi(config_data["TLS_PORT"]), config_data["FULLCHAIN"], config_data["PKEY"], accept_cb<server_type::TLS>, read_cb<server_type::TLS>, write_cb<server_type::TLS>, &basic_web_server); //pass function pointers and a custom object
+        tcp_server.start();
+      });
+    }
+
     //should see three "EVENTFD thing messages as a result of these"
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     tcp_server.notify_event();
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    tcp_server.kill_server();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     tcp_server.notify_event();
     
     server_thread.join();
+
+    for(auto &server_thread : threads) {
+      server_thread.join();
+    }
   } else {
     web_server<server_type::NON_TLS> basic_web_server;
     server<server_type::NON_TLS> tcp_server(std::stoi(config_data["PORT"]), accept_cb<server_type::NON_TLS>, read_cb<server_type::NON_TLS>, write_cb<server_type::NON_TLS>, &basic_web_server); //pass function pointers and a custom object
@@ -41,7 +54,8 @@ int main(){
     tcp_server.notify_event();
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    tcp_server.kill_server();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     tcp_server.notify_event();
     
     server_thread.join();

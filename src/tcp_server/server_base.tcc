@@ -34,6 +34,23 @@ void server_base<T>::start(){ //function to run the server
         if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
           static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
         }
+      }else if(req->event == event_type::EVENTFD) {
+        if(*reinterpret_cast<uint64_t*>(req->buffer) < 10){
+          uint64_t signal = *reinterpret_cast<uint64_t*>(req->buffer);
+          if(signal == server_signals::KILL){ // the only way to cleanly exit the loop, closes sockets and cleans up io_uring
+            io_uring_queue_exit(&ring);
+            close(listener_fd);
+            close(event_fd);
+            close(server_signal_eventfd);
+            break;
+          }else{
+            std::cout << "some other signal... " << signal << "\n";
+          }
+          event_read(server_signal_eventfd); // rearm the signal eventfd reading
+        }else{
+          std::cout << "normal eventfd signal\n";
+          event_read(event_fd); // rearm the eventfd reading
+        }
       }else{
         static_cast<server<T>*>(this)->req_event_handler(req, cqe->res);
       }
@@ -49,12 +66,18 @@ void server_base<T>::start(){ //function to run the server
 
 template<server_type T>
 void server_base<T>::notify_event(){
-  uint64_t write_data = 1;
+  uint64_t write_data = 16; // signal of 10 or more is just a notification
   write(event_fd, &write_data, sizeof(uint64_t));
 }
 
 template<server_type T>
-void server_base<T>::event_read(){
+void server_base<T>::kill_server(){
+  uint64_t write_data = 1; // signal of 1 is to kill the server
+  write(server_signal_eventfd, &write_data, sizeof(uint64_t));
+}
+
+template<server_type T>
+void server_base<T>::event_read(int event_fd){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = (request*)std::malloc(sizeof(request)); //enough space for the request struct
   req->buffer = (char*)std::malloc(sizeof(uint64_t));
@@ -81,7 +104,8 @@ server_base<T>::server_base(int listen_port){
     io_uring_queue_init_params(QUEUE_DEPTH, &ring, &params);
   }
   
-  event_read(); //sets a read request for the eventfd
+  event_read(server_signal_eventfd); //sets a read request for the signal eventfd
+  event_read(event_fd); //sets a read request for the normal eventfd
   
   listener_fd = setup_listener(listen_port); //setup the listener socket
   

@@ -36,6 +36,8 @@ constexpr int READ_BLOCK_SIZE = 8192; //how much to read from a file at once
 
 enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE, EVENTFD };
 enum class server_type { TLS, NON_TLS };
+// server signals < 10 are reserved, signals >= 10 are just for notification
+enum server_signals { KILL = 1 };
 
 template<server_type T>
 class server_base; //forward declaration
@@ -87,9 +89,9 @@ struct client<server_type::NON_TLS>: client_base {};
 
 template<>
 struct client<server_type::TLS>: client_base {
-    WOLFSSL *ssl = nullptr;
-    int accept_last_written = -1;
-    std::vector<char> recv_data{};
+  WOLFSSL *ssl = nullptr;
+  int accept_last_written = -1;
+  std::vector<char> recv_data{};
 };
 
 template<server_type T>
@@ -116,9 +118,10 @@ class server_base {
     
     int setup_client(int client_idx);
 
-    void event_read(); //will set a read request for the eventfd
+    void event_read(int event_fd); //will set a read request for the eventfd
   private:
     int event_fd = eventfd(0, 0); //used to awaken this thread for some event
+    int server_signal_eventfd = eventfd(0, 0); //used to awaken this thread for some special events (i.e to be killed)
 
     int listener_fd = 0;
 
@@ -141,6 +144,7 @@ class server_base {
 
     void read_connection(int client_idx, ulong custom_info = 0);
     void notify_event();
+    void kill_server(); // will kill the server
 };
 
 template<>
@@ -152,6 +156,10 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
+
+    // for storing and accessing all of the non TLS servers on all threads
+    static std::vector<server<server_type::NON_TLS>*> non_tls_servers;
+    static std::mutex non_tls_server_vector_access;
   public:
     server(int listen_port, 
       accept_callback<server_type::NON_TLS> a_cb = nullptr,
@@ -159,6 +167,8 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
       write_callback<server_type::NON_TLS> w_cb = nullptr,
       void *custom_obj = nullptr
     );
+
+    static void kill_all_servers(); // will kill all non tls servers on any thread
 
     void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
@@ -178,6 +188,10 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     WOLFSSL_CTX *wolfssl_ctx = nullptr;
+
+    // for storing and accessing all of the TLS servers on all threads
+    static std::vector<server<server_type::TLS>*> tls_servers;
+    static std::mutex tls_server_vector_access;
   public:
     server(
       int listen_port,
@@ -188,6 +202,8 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       write_callback<server_type::TLS> w_cb = nullptr,
       void *custom_obj = nullptr
     );
+
+    static void kill_all_servers(); // will kill all tls servers on any thread
 
     void write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info = 0); //writing depends on TLS or SSL, unlike read
     void close_connection(int client_idx); //closing depends on what resources need to be freed
