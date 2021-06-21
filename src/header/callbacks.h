@@ -22,6 +22,9 @@ void write_cb(WRITE_CB_PARAMS);
 template<server_type T>
 void event_cb(EVENT_CB_PARAMS);
 
+template<server_type T>
+void custom_read_cb(CUSTOM_READ_CB_PARAMS);
+
 #include "../web_server/callbacks.tcc" //template implementation file
 
 #endif

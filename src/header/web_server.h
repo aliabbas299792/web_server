@@ -49,12 +49,10 @@ class web_server{
   server<T> *tcp_server = nullptr;
 
   std::string get_content_type(std::string filepath);
-  int read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes);
 
   //
   ////http stuff
   //
-  void send_file_request(int client_idx, std::string filepath, bool accept_bytes);
 
   //
   ////websocket stuff////
@@ -97,8 +95,8 @@ public:
 
   //responding to get requests
   bool get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx);
-  //reading files
-  std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
+  //sending files
+  bool send_file_request(int client_idx, const std::string &filepath, bool accept_bytes, int response_code);
   //checking if it's a valid HTTP request
   bool is_valid_http_req(const char* buff, int length);
   

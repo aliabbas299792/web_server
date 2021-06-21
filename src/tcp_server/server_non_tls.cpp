@@ -16,16 +16,18 @@ void server<server_type::NON_TLS>::kill_all_servers() {
 
 server<server_type::NON_TLS>::server(
   int listen_port,
+  void *custom_obj,
   accept_callback<server_type::NON_TLS> a_cb,
   read_callback<server_type::NON_TLS> r_cb,
   write_callback<server_type::NON_TLS> w_cb,
   event_callback<server_type::NON_TLS> e_cb,
-  void *custom_obj
+  custom_read_callback<server_type::NON_TLS> cr_cb
 ) : server_base<server_type::NON_TLS>(listen_port) { //call parent constructor with the port to listen on
   this->accept_cb = a_cb;
   this->read_cb = r_cb;
   this->write_cb = w_cb;
   this->event_cb = e_cb;
+  this->custom_read_cb = cr_cb;
   this->custom_obj = custom_obj;
 
   std::unique_lock<std::mutex> access_lock(non_tls_server_vector_access);
