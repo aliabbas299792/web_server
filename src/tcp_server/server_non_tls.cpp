@@ -35,8 +35,8 @@ void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<
   client->custom_info = custom_info;
   client->send_data.push(write_data(std::move(buff)));
   if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
-    const auto data_ref = client->send_data.front();
-    add_write_req(client_idx, event_type::WRITE, (char*)&data_ref.buff[0], data_ref.buff.size());
+    auto data_ref = client->send_data.front();
+    add_write_req(client_idx, event_type::WRITE, std::move(data_ref.buff));
   }
 }
 
@@ -52,13 +52,10 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
 }
 
 int server<server_type::NON_TLS>::add_write_req_continued(request *req, int written) { //for long plain HTTP write requests, this writes at the correct offset
-  auto &client = clients[req->client_idx];
-  auto &to_write = client.send_data.front();
-
   req->written += written;
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, client.sockfd, &to_write.buff[req->written], req->total_length - req->written, 0); //do not write at an offset
+  io_uring_prep_write(sqe, clients[req->client_idx].sockfd, &req->send_data[req->written], req->total_length - req->written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
   return 0;
@@ -76,11 +73,10 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
       if(accept_cb != nullptr) accept_cb(client_idx, this, custom_obj);
       
       add_read_req(client_idx, event_type::READ); //also need to read whatever request it sends immediately
-      req->buffer = nullptr; //done with the request buffer
       break;
     }
     case event_type::READ: {
-      if(read_cb != nullptr) read_cb(req->client_idx, req->buffer, cqe_res, clients[req->client_idx].custom_info, this, custom_obj);
+      if(read_cb != nullptr) read_cb(req->client_idx, &(req->read_data[0]), cqe_res, clients[req->client_idx].custom_info, this, custom_obj);
       break;
     }
     case event_type::WRITE: {
@@ -97,12 +93,11 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
         auto *queue_ptr = &client.send_data;
         queue_ptr->pop(); //remove the last processed item
         if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
-          const auto &data = queue_ptr->front();
-          add_write_req(req->client_idx, event_type::WRITE, (char*)&data.buff[0], data.buff.size()); //adds a plain HTTP write request
+          auto &data = queue_ptr->front();
+          add_write_req(req->client_idx, event_type::WRITE, std::move(data.buff)); //adds a plain HTTP write request
         }
       }
       if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj); //call the write callback
-      req->buffer = nullptr; //done with the request buffer, we pass a vector the the write function, automatic lifespan
       break;
     }
   }

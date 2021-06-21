@@ -97,17 +97,17 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       auto client_idx = setup_client(cqe_res);
       add_tcp_accept_req();
       tls_accept(client_idx);
-      req->buffer = nullptr; //done with the request buffer
       break;
     }
     case event_type::ACCEPT_READ: {
       auto &client = clients[req->client_idx];
       const auto &ssl = client.ssl;
       if(client.recv_data.size() == 0) { //if there is no data in the buffer, add it
-        client.recv_data = std::vector<char>(req->buffer, req->buffer + cqe_res);
+        client.recv_data = std::move(req->read_data);
+        client.recv_data.resize(cqe_res);
       }else{ //otherwise copy the new data to the end of the old data
         auto *vec = &client.recv_data;
-        vec->insert(vec->end(), req->buffer, req->buffer + cqe_res);
+        vec->insert(vec->end(), &(req->read_data[0]), &(req->read_data[0]) + cqe_res);
       }
       if(wolfSSL_accept(ssl) == 1){ //that means the connection was successfully established
         if(accept_cb != nullptr) accept_cb(req->client_idx, this, custom_obj);
@@ -130,7 +130,6 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       auto &client = clients[req->client_idx];
       client.accept_last_written = cqe_res; //this is the amount that was last written, used in the tls_write callback
       wolfSSL_accept(client.ssl); //call accept again
-      req->buffer = nullptr; //done with the request buffer
       break;
     }
     case event_type::WRITE: { //used for generally writing over TLS
@@ -149,7 +148,6 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
           }
         }
       }
-      req->buffer = nullptr; //done with the request buffer
       break;
     }
     case event_type::READ: { //used for reading over TLS
@@ -157,10 +155,11 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       int to_read_amount = cqe_res; //the default read size
       if(client.recv_data.size()) { //will correctly deal with needing to call wolfSSL_read multiple times
         auto &vec_member = client.recv_data;
-        vec_member.insert(vec_member.end(), req->buffer, req->buffer + cqe_res);
+        vec_member.insert(vec_member.end(), &(req->read_data[0]), &(req->read_data[0]) + cqe_res);
         to_read_amount = vec_member.size(); //the read amount has got to be bigger, since the pending data could be more than READ_SIZE
       }else{
-        client.recv_data = std::vector<char>(req->buffer, req->buffer + cqe_res);
+        client.recv_data = std::move(req->read_data);
+        client.recv_data.resize(cqe_res);
       }
 
       std::vector<char> buffer(to_read_amount);

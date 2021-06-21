@@ -66,6 +66,9 @@ struct request {
   int written{}; //how much written so far
   int total_length{}; //how much data is in the request, in bytes
   char *buffer = nullptr;
+  
+  std::vector<char> send_data{};
+  std::vector<char> read_data{};
 };
 
 struct write_data {
@@ -112,13 +115,16 @@ class server_base {
     void add_tcp_accept_req();
 
     //need it protected rather than private, since need to access from children
-    int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //adds a write request using the provided request structure
+    int add_write_req(int client_idx, event_type event, std::vector<char> &&buff); //adds a write request using the provided request structure
+    int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //this is for the case you want to write a buffer rather than a vector
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
     
     int setup_client(int client_idx);
 
     void event_read(int event_fd); //will set a read request for the eventfd
+
+    bool running_server = false;
   private:
     int event_fd = eventfd(0, 0); //used to awaken this thread for some event
     int server_signal_eventfd = eventfd(0, 0); //used to awaken this thread for some special events (i.e to be killed)
@@ -131,8 +137,6 @@ class server_base {
     socklen_t client_address_length = sizeof(client_address);
 
     int setup_listener(int port); //sets up the listener socket
-
-    bool running_server = false;
 
     //needed to synchronize the multiple server threads
     static std::mutex init_mutex;

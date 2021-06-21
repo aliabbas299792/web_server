@@ -16,7 +16,7 @@ long int get_file_size(int file_fd){
     fatal_error("file stat");
   
   if(S_ISBLK(file_stat.st_mode)){
-    uint long long size_bytes;
+    uint64_t size_bytes;
     if(ioctl(file_fd, BLKGETSIZE64, &size_bytes) != 0)
       fatal_error("file stat ioctl");
     
