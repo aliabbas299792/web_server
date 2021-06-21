@@ -27,17 +27,17 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
   auto client_idx = websocket_clients[ws_client_idx].client_idx;
   auto &client_data = websocket_clients[ws_client_idx];
 
+  bool closed = false;
   if(frame_pair.first == 1){ //if frame_pair.first == -1, then we're trying to immediately close
     frames = std::move(frame_pair.second);
     //by this point the frame has definitely been fully received
 
     std::vector<uchar> frame_contents{};
-    bool closed = false;
     
     for(const auto &frame : frames){
       if(frame.size()){
         auto processed_data = decode_websocket_frame(frame);
-
+        
         frame_contents.clear();
         //for now finishes and prints last 200 bytes
         if(processed_data.first == 1){ // 1 is to indicate that it's done
@@ -53,7 +53,7 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
           auto *vec_member = &client_data.websocket_frames;
           vec_member->insert(vec_member->begin(), processed_data.second.begin(), processed_data.second.end());
         }else if(processed_data.first == -3){ //close opcode
-          client_data.closing_state++;
+          client_data.currently_writing++;
           //we're going to close immediately after, so make sure the program knows there is this write op happening
           closed = close_ws_connection_req(ws_client_idx);
         }else if(processed_data.first == 2){ //ping opcode
@@ -76,23 +76,22 @@ void web_server<T>::websocket_process_read_cb(int ws_client_idx, char *buffer, i
         websocket_write(ws_client_idx, std::move(data));
 
         //we're going to close immediately after, so make sure the program knows there is this write op happening
-        closed = close_ws_connection_req(ws_client_idx);
+        // closed = close_ws_connection_req(ws_client_idx);
       }
 
       if(closed)
         break;
-      }
-
-      if(!closed)
-        tcp_server->read_connection(client_idx, ws_client_idx); //since it's a websocket, add another read request right after
+    }
   }
+
+  if(!closed)
+    tcp_server->read_connection(client_idx, ws_client_idx); //since it's a websocket, add another read request right after
 }
 
 template<server_type T>
 bool web_server<T>::websocket_process_write_cb(int ws_client_idx){
   if(all_websocket_connections.count(ws_client_idx)){
-    if(websocket_clients[ws_client_idx].closing_state)
-      close_ws_connection_confirm(ws_client_idx);
+    close_ws_connection_potential_confirm(ws_client_idx);
     return true;
   }
   return false;
@@ -101,7 +100,7 @@ bool web_server<T>::websocket_process_write_cb(int ws_client_idx){
 template<server_type T>
 void web_server<T>::websocket_write(int ws_client_idx, std::vector<char> &&buff){
   auto &client_data = websocket_clients[ws_client_idx];
-  client_data.closing_state++;
+  client_data.currently_writing++;
   tcp_server->write_connection(client_data.client_idx, std::move(buff), ws_client_idx);
 }
 
@@ -119,14 +118,14 @@ int web_server<T>::new_ws_client(int client_idx){
     freed_client = ws_client();
     freed_client.id = new_id;
   }else{
-    websocket_clients.push_back(ws_client()); //otherwise give a new one
+    websocket_clients.emplace(websocket_clients.end()); //otherwise give a new one
     index = websocket_clients.size()-1;
   }
   
   websocket_clients[index].client_idx = client_idx;
 
   all_websocket_connections.insert(index);
-  active_websocket_connections.insert(index);
+  active_websocket_connections_client_idxs.insert(client_idx);
 
   return index;
 }
@@ -196,8 +195,8 @@ std::vector<char> web_server<T>::make_ws_frame(const std::string &packet_msg, we
 template<server_type T>
 bool web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_already_closed){
   auto &client_data = websocket_clients[ws_client_idx];
-  client_data.closing_state++;
-  active_websocket_connections.erase(ws_client_idx);
+  client_data.currently_writing++;
+  active_websocket_connections_client_idxs.erase(client_data.client_idx);
   client_data.websocket_frames = {};
   if(!client_already_closed) {
     auto data = make_ws_frame("", websocket_non_control_opcodes::close_connection);
@@ -207,14 +206,16 @@ bool web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_alrea
 }
 
 template<server_type T>
-bool web_server<T>::close_ws_connection_confirm(int ws_client_idx){
+bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
   auto &client_data = websocket_clients[ws_client_idx];
-  if(client_data.closing_state == 1){
-    tcp_server->close_connection(client_data.client_idx);
-    all_websocket_connections.erase(ws_client_idx); //connection definitely closed by now
-    freed_indexes.insert(ws_client_idx);
+  if(client_data.currently_writing == 1){
+    if(client_data.close){
+      tcp_server->close_connection(client_data.client_idx);
+      all_websocket_connections.erase(ws_client_idx); //connection definitely closed by now
+      freed_indexes.insert(ws_client_idx);
+    }
   }else{
-    client_data.closing_state--;
+    client_data.currently_writing--;
   }
   return true;
 }
@@ -307,7 +308,7 @@ std::pair<int, std::vector<std::vector<uchar>>> web_server<T>::get_ws_frames(cha
     auto packet_length = get_ws_frame_length(buffer);
     
     if(remaining_length >= packet_length){
-      frames.push_back(std::vector<uchar>(buffer, buffer + packet_length));
+      frames.emplace(frames.end(), buffer, buffer + packet_length);
       char *remaining_data = nullptr;
       remove_first_n_elements(buffer, (int)remaining_length, remaining_data, (int)packet_length);
       buffer = remaining_data;

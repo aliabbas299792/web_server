@@ -19,11 +19,13 @@ server<server_type::NON_TLS>::server(
   accept_callback<server_type::NON_TLS> a_cb,
   read_callback<server_type::NON_TLS> r_cb,
   write_callback<server_type::NON_TLS> w_cb,
+  event_callback<server_type::NON_TLS> e_cb,
   void *custom_obj
 ) : server_base<server_type::NON_TLS>(listen_port) { //call parent constructor with the port to listen on
   this->accept_cb = a_cb;
   this->read_cb = r_cb;
   this->write_cb = w_cb;
+  this->event_cb = e_cb;
   this->custom_obj = custom_obj;
 
   std::unique_lock<std::mutex> access_lock(non_tls_server_vector_access);
@@ -33,10 +35,11 @@ server<server_type::NON_TLS>::server(
 void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info) {
   auto *client = &clients[client_idx];
   client->custom_info = custom_info;
-  client->send_data.push(write_data(std::move(buff)));
+  client->send_data.emplace(std::move(buff));
   if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
-    auto data_ref = client->send_data.front();
-    add_write_req(client_idx, event_type::WRITE, std::move(data_ref.buff));
+    auto &data_ref = client->send_data.front();
+    auto &buff = data_ref.buff;
+    add_write_req(client_idx, event_type::WRITE, &buff[0], buff.size());
   }
 }
 
@@ -52,10 +55,13 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
 }
 
 int server<server_type::NON_TLS>::add_write_req_continued(request *req, int written) { //for long plain HTTP write requests, this writes at the correct offset
+  auto &client = clients[req->client_idx];
+  auto &to_write = client.send_data.front();
+
   req->written += written;
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, clients[req->client_idx].sockfd, &req->send_data[req->written], req->total_length - req->written, 0); //do not write at an offset
+  io_uring_prep_write(sqe, client.sockfd, &to_write.buff[req->written], req->total_length - req->written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
   return 0;
@@ -93,8 +99,9 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
         auto *queue_ptr = &client.send_data;
         queue_ptr->pop(); //remove the last processed item
         if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
-          auto &data = queue_ptr->front();
-          add_write_req(req->client_idx, event_type::WRITE, std::move(data.buff)); //adds a plain HTTP write request
+          auto &data_ref = queue_ptr->front();
+          auto &buff = data_ref.multi_write_data ? data_ref.multi_write_data->buff : data_ref.buff;
+          add_write_req(req->client_idx, event_type::WRITE, &buff[0], buff.size()); //adds a plain HTTP write request
         }
       }
       if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj); //call the write callback

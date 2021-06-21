@@ -1,5 +1,5 @@
 #pragma once
-#include "../header/server.h" // NOLINT
+#include "../header/server.h"
 #include "../header/utility.h"
 
 //initialise static members
@@ -49,7 +49,8 @@ void server_base<T>::start(){ //function to run the server
           }
           event_read(server_signal_eventfd); // rearm the signal eventfd reading
         }else{
-          std::cout << "normal eventfd signal\n";
+          // std::cout << "normal eventfd signal\n";
+          event_cb(static_cast<server<T>*>(this), custom_obj);
           event_read(event_fd); // rearm the eventfd reading
         }
       }else{
@@ -65,7 +66,7 @@ void server_base<T>::start(){ //function to run the server
 
 template<server_type T>
 void server_base<T>::notify_event(){
-  uint64_t write_data = 16; // signal of 10 or more is just a notification
+  uint64_t write_data = 10; // signal of 10 or more is just a notification
   write(event_fd, &write_data, sizeof(uint64_t));
 }
 
@@ -200,14 +201,13 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
 template<server_type T>
 int server_base<T>::add_read_req(int client_idx, event_type event){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
-  request *req = new request();
-  req->buffer = (char*)std::malloc(READ_SIZE); //malloc enough space for the data to be read
+  request *req = new request(); //enough space for the request struct
   req->total_length = READ_SIZE;;
   req->event = event;
   req->client_idx = client_idx;
   req->ID = clients[client_idx].id;
   req->read_data.resize(READ_SIZE);
-
+  
   io_uring_prep_read(sqe, clients[client_idx].sockfd, &(req->read_data[0]), READ_SIZE, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
@@ -227,24 +227,6 @@ int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_write(sqe, clients[client_idx].sockfd, buffer, length, 0); //do not write at an offset
-  io_uring_sqe_set_data(sqe, req);
-  io_uring_submit(&ring); //submits the event
-
-  return 0;
-}
-
-template<server_type T>
-int server_base<T>::add_write_req(int client_idx, event_type event, std::vector<char> &&buff) {
-  request *req = new request();
-  std::memset(req, 0, sizeof(request));
-  req->client_idx = client_idx;
-  req->total_length = buff.size();
-  req->send_data = buff;
-  req->event = event;
-  req->ID = clients[client_idx].id;
-  
-  io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, clients[client_idx].sockfd, &(req->send_data[0]), req->total_length, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
 

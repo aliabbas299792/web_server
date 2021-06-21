@@ -31,11 +31,12 @@ void server<server_type::TLS>::close_connection(int client_idx) {
 void server<server_type::TLS>::write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info) {
   auto *client = &clients[client_idx];
   client->custom_info = custom_info;
-  client->send_data.push(write_data(std::move(buff)));
-  const auto data_ref = client->send_data.front();
+  client->send_data.emplace(std::move(buff));
+  const auto &data_ref = client->send_data.front();
+  auto &to_write_buff = data_ref.buff;
   
   if(client->send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
-    wolfSSL_write(client->ssl, &data_ref.buff[0], data_ref.buff.size()); //writes the data using wolfSSL
+    wolfSSL_write(client->ssl, &to_write_buff[0], to_write_buff.size()); //writes the data using wolfSSL
 }
 
 server<server_type::TLS>::server(
@@ -45,11 +46,13 @@ server<server_type::TLS>::server(
   accept_callback<server_type::TLS> a_cb,
   read_callback<server_type::TLS> r_cb,
   write_callback<server_type::TLS> w_cb,
+  event_callback<server_type::TLS> e_cb,
   void *custom_obj
 ) : server_base<server_type::TLS>(listen_port) { //call parent constructor with the port to listen on
   this->accept_cb = a_cb;
   this->read_cb = r_cb;
   this->write_cb = w_cb;
+  this->event_cb = e_cb;
   this->custom_obj = custom_obj;
 
   //initialise wolfSSL
@@ -136,15 +139,17 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       auto &client = clients[req->client_idx];
       if(client.send_data.size() > 0){ //ensure this connection is still active
         auto &data_ref = client.send_data.front();
+        auto &buff = data_ref.multi_write_data ? data_ref.multi_write_data->buff : data_ref.buff;
         data_ref.last_written = cqe_res;
 
-        int written = wolfSSL_write(client.ssl, &(data_ref.buff[0]), data_ref.buff.size());
+        int written = wolfSSL_write(client.ssl, &buff[0], buff.size());
         if(written > -1){ //if it's not negative, it's all been written, so this write call is done
           client.send_data.pop();
           if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj);
           if(client.send_data.size()){ //if the write queue isn't empty, then write that as well
             auto &data_ref = client.send_data.front();
-            wolfSSL_write(client.ssl, &(data_ref.buff[0]), data_ref.buff.size());
+            auto &buff = data_ref.multi_write_data ? data_ref.multi_write_data->buff : data_ref.buff;
+            wolfSSL_write(client.ssl, &buff[0], buff.size());
           }
         }
       }
@@ -180,5 +185,5 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       }
       break;
     }
-  }   
+  }
 }
