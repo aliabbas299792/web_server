@@ -70,6 +70,16 @@ int server<server_type::NON_TLS>::add_write_req_continued(request *req, int writ
   return 0;
 }
 
+void server<server_type::NON_TLS>::write_connection(int client_idx, char* buff, size_t length) {
+  auto *client = &clients[client_idx];
+  client->send_data.emplace(buff, length);
+  if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
+    auto &data_ref = client->send_data.front();
+    auto &buff = data_ref.ptr_buff;
+    add_write_req(client_idx, event_type::WRITE, buff, length);
+  }
+}
+
 void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res){
   switch(req->event){
     case event_type::ACCEPT: {

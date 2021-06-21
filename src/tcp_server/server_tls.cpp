@@ -97,6 +97,16 @@ void server<server_type::TLS>::tls_accept(int client_idx){
   wolfSSL_accept(ssl); //initialise the wolfSSL accept procedure
 }
 
+void server<server_type::TLS>::write_connection(int client_idx, char *buff, size_t length) {
+  auto *client = &clients[client_idx];
+  client->send_data.emplace(buff, length);
+  const auto &data_ref = client->send_data.front();
+  auto &to_write_buff = data_ref.ptr_buff;
+
+  if(client->send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
+    wolfSSL_write(client->ssl, to_write_buff, length); //writes the data using wolfSSL
+}
+
 void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
   switch(req->event){
     case event_type::ACCEPT: {

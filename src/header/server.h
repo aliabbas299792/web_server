@@ -91,17 +91,39 @@ struct multi_write {
   int uses{}; //this should be decremented each time you would normally delete this object, when it reaches 0, then delete
 };
 
-struct write_data {
+struct write_data { //this is closer to 3 objects in 1
+  int last_written = -1;
+
   write_data(std::vector<char> &&buff) : buff(buff) {}
+  std::vector<char> buff;
+
+  write_data(char *buff, size_t length) : ptr_buff(buff) {}
+  char *ptr_buff = nullptr; //in the case you only want to write a char* ptr - this basically trusts that you won't invalidate the pointer
+  size_t total_length{}; //used in conjunction with the above
+
   write_data(multi_write *multi_write_data) : multi_write_data(multi_write_data) {}
   multi_write *multi_write_data = nullptr; //if not null then buff should be empty, and data should be in the multi_write pointer
-  std::vector<char> buff;
-  int last_written = -1;
   ~write_data(){
     if(multi_write_data){
       multi_write_data->uses--;
       if(multi_write_data->uses == 0)
         delete multi_write_data;
+    }
+  }
+
+  struct ptr_and_size {
+    ptr_and_size(char *buff, size_t length) : buff(buff), length(length) {}
+    char *buff = nullptr;
+    size_t length{};
+  };
+  
+  ptr_and_size get_ptr_and_size(){
+    if(multi_write_data){
+      return { &(multi_write_data->buff[0]), multi_write_data->buff.size() };
+    }else if(ptr_buff){
+      return { ptr_buff, total_length };
+    }else{
+      return { &buff[0], buff.size() };
     }
   }
 };
@@ -228,6 +250,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     static void kill_all_servers(); // will kill all non tls servers on any thread
 
     void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
+    void write_connection(int client_idx, char *buff, size_t length); //writing but using a char pointer, doesn't do anything to the data
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
@@ -280,6 +303,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     static void kill_all_servers(); // will kill all tls servers on any thread
 
     void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
+    void write_connection(int client_idx, char *buff, size_t length); //writing but using a char pointer, doesn't do anything to the data
     void close_connection(int client_idx); //closing depends on what resources need to be freed
 };
 
