@@ -1,4 +1,6 @@
-.vscode/*
+.vscode
 public/**
-build/**
+build
 .config
+.cache
+.clangd

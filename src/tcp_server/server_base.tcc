@@ -1,4 +1,5 @@
-#include "../header/server.h"
+#pragma once
+#include "../header/server.h" // NOLINT
 #include "../header/utility.h"
 
 //initialise static members

@@ -7,8 +7,10 @@ cmake \
   -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
   -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" \
   -B ../build \
-  -DSOURCE_FILES="$SOURCE_FILES"
+  -DSOURCE_FILES="$SOURCE_FILES" \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 cd ..
 cd build && make
+cp compile_commands.json .. # for clangd
 cp webserver ../server
 cd ..

@@ -1,0 +1,27 @@
+[
+{
+  "directory": "/home/fate/practice_cpp/liburing_server/build",
+  "command": "/usr/bin/c++    -g -O0   -std=gnu++11 -o CMakeFiles/webserver.dir/common/utility.cpp.o -c /home/fate/practice_cpp/liburing_server/src/common/utility.cpp",
+  "file": "/home/fate/practice_cpp/liburing_server/src/common/utility.cpp"
+},
+{
+  "directory": "/home/fate/practice_cpp/liburing_server/build",
+  "command": "/usr/bin/c++    -g -O0   -std=gnu++11 -o CMakeFiles/webserver.dir/tcp_server/wolfssl_callbacks.cpp.o -c /home/fate/practice_cpp/liburing_server/src/tcp_server/wolfssl_callbacks.cpp",
+  "file": "/home/fate/practice_cpp/liburing_server/src/tcp_server/wolfssl_callbacks.cpp"
+},
+{
+  "directory": "/home/fate/practice_cpp/liburing_server/build",
+  "command": "/usr/bin/c++    -g -O0   -std=gnu++11 -o CMakeFiles/webserver.dir/tcp_server/server_non_tls.cpp.o -c /home/fate/practice_cpp/liburing_server/src/tcp_server/server_non_tls.cpp",
+  "file": "/home/fate/practice_cpp/liburing_server/src/tcp_server/server_non_tls.cpp"
+},
+{
+  "directory": "/home/fate/practice_cpp/liburing_server/build",
+  "command": "/usr/bin/c++    -g -O0   -std=gnu++11 -o CMakeFiles/webserver.dir/tcp_server/server_tls.cpp.o -c /home/fate/practice_cpp/liburing_server/src/tcp_server/server_tls.cpp",
+  "file": "/home/fate/practice_cpp/liburing_server/src/tcp_server/server_tls.cpp"
+},
+{
+  "directory": "/home/fate/practice_cpp/liburing_server/build",
+  "command": "/usr/bin/c++    -g -O0   -std=gnu++11 -o CMakeFiles/webserver.dir/main.cpp.o -c /home/fate/practice_cpp/liburing_server/src/main.cpp",
+  "file": "/home/fate/practice_cpp/liburing_server/src/main.cpp"
+}
+]

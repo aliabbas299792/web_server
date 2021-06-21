@@ -1,3 +1,4 @@
+#pragma once
 #include "../header/callbacks.h"
 #include "../header/utility.h"
 

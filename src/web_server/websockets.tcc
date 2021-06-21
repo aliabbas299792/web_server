@@ -1,3 +1,4 @@
+#pragma once
 #include "../header/web_server.h"
 
 #include <openssl/sha.h>
