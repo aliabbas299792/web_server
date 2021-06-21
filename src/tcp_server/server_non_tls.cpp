@@ -18,12 +18,14 @@ server<server_type::NON_TLS>::server(
   int listen_port,
   void *custom_obj,
   accept_callback<server_type::NON_TLS> a_cb,
+  close_callback<server_type::NON_TLS> c_cb,
   read_callback<server_type::NON_TLS> r_cb,
   write_callback<server_type::NON_TLS> w_cb,
   event_callback<server_type::NON_TLS> e_cb,
   custom_read_callback<server_type::NON_TLS> cr_cb
 ) : server_base<server_type::NON_TLS>(listen_port) { //call parent constructor with the port to listen on
   this->accept_cb = a_cb;
+  this->close_cb = c_cb;
   this->read_cb = r_cb;
   this->write_cb = w_cb;
   this->event_cb = e_cb;
@@ -34,9 +36,8 @@ server<server_type::NON_TLS>::server(
   non_tls_servers.push_back(this); // basically so that anything which wants to manage all of the server at once, can
 }
 
-void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff, ulong custom_info) {
+void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff) {
   auto *client = &clients[client_idx];
-  client->custom_info = custom_info;
   client->send_data.emplace(std::move(buff));
   if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
     auto &data_ref = client->send_data.front();
@@ -84,7 +85,7 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
       break;
     }
     case event_type::READ: {
-      if(read_cb != nullptr) read_cb(req->client_idx, &(req->read_data[0]), cqe_res, clients[req->client_idx].custom_info, this, custom_obj);
+      if(read_cb != nullptr) read_cb(req->client_idx, &(req->read_data[0]), cqe_res, this, custom_obj);
       break;
     }
     case event_type::WRITE: {
@@ -106,7 +107,7 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
           add_write_req(req->client_idx, event_type::WRITE, &buff[0], buff.size()); //adds a plain HTTP write request
         }
       }
-      if(write_cb != nullptr) write_cb(req->client_idx, client.custom_info, this, custom_obj); //call the write callback
+      if(write_cb != nullptr) write_cb(req->client_idx, this, custom_obj); //call the write callback
       break;
     }
   }

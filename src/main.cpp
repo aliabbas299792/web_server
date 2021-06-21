@@ -19,6 +19,7 @@ int main(){
       config_data["PKEY"],
       &basic_web_server,
       accept_cb<server_type::TLS>,
+      close_cb<server_type::TLS>,
       read_cb<server_type::TLS>,
       write_cb<server_type::TLS>,
       event_cb<server_type::TLS>,
@@ -31,12 +32,14 @@ int main(){
       tcp_server.start();
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
+
+    tcp_server.kill_server();
     
     server_thread.join();
   } else {
@@ -46,6 +49,7 @@ int main(){
       std::stoi(config_data["PORT"]),
       &basic_web_server,
       accept_cb<server_type::NON_TLS>,
+      close_cb<server_type::NON_TLS>,
       read_cb<server_type::NON_TLS>,
       write_cb<server_type::NON_TLS>,
       event_cb<server_type::NON_TLS>,
@@ -58,12 +62,14 @@ int main(){
       tcp_server.start();
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
+
+    tcp_server.kill_server();
     
     server_thread.join();
   }
