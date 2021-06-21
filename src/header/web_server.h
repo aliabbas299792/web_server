@@ -42,47 +42,78 @@ public:
 
 template<server_type T>
 class web_server{
+  //
+  ////generally useful functions and variables
+  //
   io_uring ring;
-
-  std::string get_content_type(std::string filepath);
-
-  int read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes);
-
   server<T> *tcp_server = nullptr;
 
-  std::string get_accept_header_value(std::string input);
-  ulong get_ws_frame_length(const char *buffer);
-  std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data);
-  std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int ws_client_idx);
+  std::string get_content_type(std::string filepath);
+  int read_file(std::string filepath, std::vector<char>& buffer, int reserved_bytes);
+
+  //
+  ////http stuff
+  //
+  void send_file_request(int client_idx, std::string filepath, bool accept_bytes);
+
+  //
+  ////websocket stuff////
+  //
   
-  int new_ws_client(int client_idx);
-  bool close_ws_connection_req(int ws_client_idx, bool client_already_closed = false);
-  bool close_ws_connection_potential_confirm(int ws_client_idx);
+  //reading data from connections
+  ulong get_ws_frame_length(const char *buffer); //helper function which reads the websocket header to get the length of the message
+  std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data); //decodes a single full websocket frame
+  std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int ws_client_idx); //gets any full websocket frames possible
+
+  //writing data to connections
+  void websocket_write(int ws_client_idx, std::vector<char> &&buff);
+  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
   
+  //related to opening/closing connections
+  std::string get_accept_header_value(std::string input); //gets the appropriate header value from the websocket connection request
+  int new_ws_client(int client_idx); //makes a new websocket client
+  bool close_ws_connection_req(int ws_client_idx, bool client_already_closed = false); //puts in a request to close this websocket connection
+  bool close_ws_connection_potential_confirm(int ws_client_idx); //actually closes the websocket connection (it's sent a close notification)
+
+  //where data about connections is stored
+  std::set<int> freed_indexes{}; //set of free indexes for websocket client stuff
+  std::vector<ws_client> websocket_clients{};
+  
+  //
+  ////communication between threads////
+  //
+
+  //lock free queues used to transport data between threads
   moodycamel::ReaderWriterQueue<void*> to_server_queue{};
   moodycamel::ReaderWriterQueue<void*> to_program_queue{};
 public:
   web_server();
 
-  void websocket_write(int ws_client_idx, std::vector<char> &&buff);
-  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
-
-  //http public methods
-  bool is_valid_http_req(const char* buff, int length);
-  std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
-
-  bool get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server);
+  void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
   
+  //
+  ////http public methods
+  //
+
+  //responding to get requests
+  bool get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx);
+  //reading files
+  std::vector<char> read_file_web(std::string filepath, int responseCode = 200, bool accept_bytes = false);
+  //checking if it's a valid HTTP request
+  bool is_valid_http_req(const char* buff, int length);
+  
+  //
+  ////public websocket stuff
+  //
+
   //websocket public methods
   void websocket_process_read_cb(int ws_client_idx, char *buffer, int length);
   bool websocket_process_write_cb(int ws_client_idx); //returns whether or not this was used
-  void websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx, server<T> *tcp_server); //used in the read callback to accept web sockets
+  void websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx); //used in the read callback to accept web sockets
 
+  //websocket data
   std::unordered_set<int> all_websocket_connections{}; //this is used for the duration of the connection (even after we've sent the close request)
   std::unordered_set<int> active_websocket_connections_client_idxs{}; //this is only active up until we call a close request, has client_idx
-
-  std::set<int> freed_indexes{}; //set of free indexes for websocket client stuff
-  std::vector<ws_client> websocket_clients{};
 };
 
 #include "../web_server/web_server.tcc"

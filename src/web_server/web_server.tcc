@@ -8,13 +8,13 @@ web_server<T>::web_server(){
 }
 
 template<server_type T>
-bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx, server<T> *tcp_server){
+bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
   char *saveptr = nullptr;
   const char* token = strtok_r((char*)path.c_str(), "/", &saveptr);
   const char* subdir = token ? token : "";
 
   if( (strlen(subdir) == 2 && strncmp(subdir, "ws", 2) == 0)  && sec_websocket_key != ""){
-    websocket_accept_read_cb(sec_websocket_key, path.substr(2), client_idx, tcp_server);
+    websocket_accept_read_cb(sec_websocket_key, path.substr(2), client_idx);
     return true;
   }else{
     path = path == "" ? "public/index.html" : "public/"+path;
@@ -102,6 +102,36 @@ int web_server<T>::read_file(std::string filepath, std::vector<char>& buffer, in
 }
 
 template<server_type T>
+void web_server<T>::send_file_request(int client_idx, std::string filepath, bool accept_bytes){
+  const auto file_fd = open(filepath.c_str(), O_RDONLY);
+  const auto file_size = get_file_size(file_fd);
+
+  const auto content_length = std::to_string(file_size);
+  const auto content_type = get_content_type(filepath);
+
+  std::string headers = "";
+  if(accept_bytes){
+    headers = "HTTP/1.1 200 OK\r\n";
+    headers += content_type;
+    headers += "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: ";
+    headers += content_length;
+    headers += "\r\nRange: bytes=0-";
+    headers += content_length;
+    headers += "/";
+  }else{
+    headers = "HTTP/1.1 200 OK\r\n";
+    headers += content_type;
+    headers += "Content-Length: ";
+  }
+  headers += content_length;
+  headers += "\r\nConnection:Keep-Alive\r\n\r\n";
+
+  std::vector<char> send_buffer(file_size + headers.size());
+
+  std::memcpy(&send_buffer[0], headers.c_str(), headers.size());
+}
+
+template<server_type T>
 std::vector<char> web_server<T>::read_file_web(std::string filepath, int responseCode, bool accept_bytes){
   auto header_first_line = "";
   
@@ -115,7 +145,6 @@ std::vector<char> web_server<T>::read_file_web(std::string filepath, int respons
 
   const auto content_type = get_content_type(filepath);
   const auto reserved_bytes = 200; //I'm estimating, header is probably going to be up to 200 bytes
-  //char *buffer = nullptr;
 
   std::vector<char> buffer{};
   const auto size = read_file(filepath, buffer, reserved_bytes);
@@ -126,9 +155,21 @@ std::vector<char> web_server<T>::read_file_web(std::string filepath, int respons
 
   std::string headers = "";
   if(accept_bytes){
-    headers = header_first_line + content_type + "Accept-Ranges: bytes\r\nContent-Length: " + content_length + "\r\nRange: bytes=0-" + content_length + "/" + content_length + "\r\nConnection:";
+    headers = header_first_line;
+    headers += content_type;
+    headers += "Accept-Ranges: bytes\r\nContent-Length: ";
+    headers += content_length;
+    headers += "\r\nRange: bytes=0-";
+    headers += content_length;
+    headers += "/";
+    headers += content_length;
+    headers += "\r\nConnection:";
   }else{
-    headers = header_first_line + content_type + "Content-Length: " + content_length + "\r\nConnection:";
+    headers = header_first_line;
+    headers += content_type;
+    headers += "Content-Length: ";
+    headers += content_length;
+    headers += "\r\nConnection:";
   }
 
   const auto header_last = "Keep-Alive\r\n\r\n"; //last part of the header
@@ -138,4 +179,9 @@ std::vector<char> web_server<T>::read_file_web(std::string filepath, int respons
   std::memcpy(&buffer[reserved_bytes-strlen(header_last)], header_last, strlen(header_last)); //this copies the last bit to the end of the reserved section
 
   return buffer;
+}
+
+template<server_type T>
+void web_server<T>::set_tcp_server(server<T> *tcp_server){
+  this->tcp_server = tcp_server;
 }

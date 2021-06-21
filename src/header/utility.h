@@ -17,7 +17,7 @@
 typedef struct stat stat_struct;
 
 void fatal_error(std::string error_message); //fatal error helper function
-long int get_file_size(int file_fd); //gets file size of the file descriptor passed in
+uint64_t get_file_size(int file_fd); //gets file size of the file descriptor passed in
 std::unordered_map<std::string, std::string> read_config(); //helper function to read the config file (.config)
 void sigint_handler(int sig_number); //handler used in main for handling SIGINT
 

@@ -5,9 +5,7 @@
 #include <openssl/evp.h>
 
 template<server_type T>
-void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx, server<T> *tcp_server){
-  this->tcp_server = tcp_server;
-
+void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx){
   const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
   const auto resp = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept_header_value + "\r\n\r\n";
 

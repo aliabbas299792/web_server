@@ -67,12 +67,14 @@ struct request {
   event_type event;
   int client_idx{};
   int ID{};
-  int written{}; //how much written so far
-  int total_length{}; //how much data is in the request, in bytes
+  size_t written{}; //how much written so far
+  size_t total_length{}; //how much data is in the request, in bytes
   char *buffer = nullptr;
 
   std::vector<char> send_data{};
   std::vector<char> read_data{};
+  size_t read_amount{}; //how much has been read (in case of multi read requests)
+  uint64_t custom_info{}; //any custom info you want to attach to the request
 };
 
 struct multi_write {
@@ -90,9 +92,8 @@ struct write_data {
   ~write_data(){
     if(multi_write_data){
       multi_write_data->uses--;
-      if(multi_write_data->uses == 0){
+      if(multi_write_data->uses == 0)
         delete multi_write_data;
-      }
     }
   }
 };
@@ -139,6 +140,8 @@ class server_base {
     int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //this is for the case you want to write a buffer rather than a vector
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
+
+    void custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff = {}, size_t read_amount = 0);
     
     int setup_client(int client_idx);
 
@@ -180,7 +183,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     void req_event_handler(request *&req, int cqe_res); //the main event handler
 
     int add_write_req_continued(request *req, int offset); //only used for when writev didn't write everything
-
+    
     // for storing and accessing all of the non TLS servers on all threads
     static std::vector<server<server_type::NON_TLS>*> non_tls_servers;
     static std::mutex non_tls_server_vector_access;
