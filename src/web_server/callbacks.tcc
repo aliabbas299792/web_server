@@ -30,7 +30,15 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
 template<server_type T>
 void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj){
-  tcp_server->write_connection(client_idx, std::move(buff));
+  const auto basic_web_server = (web_server<T>*)custom_obj;
+  const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
+  basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff));
+
+  std::cout << "readcb called\n";
+
+  const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx);
+
+  tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size); // no need to check if it's found, since we just inserted it
 }
 
 template<server_type T>
