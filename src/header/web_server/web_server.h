@@ -68,6 +68,7 @@ class web_server{
   ulong get_ws_frame_length(const char *buffer); //helper function which reads the websocket header to get the length of the message
   std::pair<int, std::vector<char>> decode_websocket_frame(std::vector<char> &&data); //decodes a single full websocket frame
   std::pair<int, std::vector<std::vector<char>>> get_ws_frames(char *buffer, int length, int ws_client_idx); //gets any full websocket frames possible
+  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
 
   //writing data to connections
   void websocket_write(int ws_client_idx, std::vector<char> &&buff);
@@ -90,8 +91,6 @@ class web_server{
   moodycamel::ReaderWriterQueue<void*> to_server_queue{};
   moodycamel::ReaderWriterQueue<void*> to_program_queue{};
 public:
-  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
-
   web_server() {};
 
   void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
@@ -116,7 +115,7 @@ public:
   //checking if it's a valid HTTP request
   bool is_valid_http_req(const char* buff, int length);
   //the cache
-  cache<2> web_cache{}; //cache of 2 items
+  cache<5> web_cache{}; //cache of 5 items
   
   //
   ////public websocket stuff

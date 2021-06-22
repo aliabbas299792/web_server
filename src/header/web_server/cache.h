@@ -5,15 +5,17 @@
 #include <unordered_map>
 #include <vector>
 
+#include <sys/inotify.h>
+
 #include "common_structs_enums.h"
-#include "../utility.h"
 
 struct cache_item {
   std::vector<char> buffer{};
-  timespec timestamp{};
   int lock_number{}; //number of times this has been locked, if non zero then this item should NOT be removed (in use)
   int next_item_idx = -1;
   int prev_item_idx = -1;
+  bool outdated = false; //if true, then removed from cache
+  int watch{};
 };
 
 struct cache_fetch_item {
@@ -33,7 +35,11 @@ private:
   std::unordered_map<int, int> client_idx_to_cache_idx{}; //used in setting/unsetting locks
   int highest_idx = -1;
   int lowest_idx = -1;
+
+  std::unordered_map<int, int> watch_to_cache_idx{};
 public:
+  const int inotify_fd = inotify_init(); //public as we need to read from it
+
   cache(){ //only works for cache's which are greater than 1 in size
     for(int i = 0; i < cache_buffer.size(); i++)
       free_idxs.insert(i);
@@ -49,8 +55,7 @@ public:
 
       client_idx_to_cache_idx[client_idx] = current_idx; //mapping to the idx that the client_idx is locking
 
-      const auto new_timestamp = get_timestamp(filepath.c_str());
-      bool outdated_file = item.timestamp.tv_sec < new_timestamp.tv_sec || (item.timestamp.tv_sec == new_timestamp.tv_sec && item.timestamp.tv_nsec < new_timestamp.tv_nsec);
+      bool outdated_file = item.outdated;
 
       if(item.next_item_idx == -1){ //cannot promote highest one more
         if(!outdated_file){
@@ -59,6 +64,8 @@ public:
           if(item.prev_item_idx != -1)
             cache_buffer[item.prev_item_idx].next_item_idx = -1;
           
+          inotify_rm_watch(inotify_fd, item.watch); //remove the watcher for this item
+          watch_to_cache_idx.erase(item.watch);
           free_idxs.insert(current_idx);
           item = cache_item();
 
@@ -80,6 +87,8 @@ public:
       }
 
       if(outdated_file){
+        inotify_rm_watch(inotify_fd, item.watch); //remove the watcher for this item
+        watch_to_cache_idx.erase(item.watch);
         free_idxs.insert(current_idx);
         item = cache_item();
 
@@ -114,6 +123,8 @@ public:
         const auto new_lowest_idx = lowest_item.next_item_idx;
 
         cache_buffer[lowest_item.next_item_idx].prev_item_idx = -1; //2nd lowest is now lowest
+        inotify_rm_watch(inotify_fd, lowest_item.watch); //remove the watcher for this item
+        watch_to_cache_idx.erase(lowest_item.watch);
         cache_buffer[lowest_idx] = cache_item(); //we are reusing the lowest item
 
         filepath_to_cache_idx.erase(cache_idx_to_filepath[lowest_idx]);
@@ -133,7 +144,9 @@ public:
       filepath_to_cache_idx[filepath] = current_idx;
       cache_idx_to_filepath[current_idx] = filepath;
 
-      current_item.timestamp = get_timestamp(filepath.c_str());
+      current_item.watch = inotify_add_watch(inotify_fd, filepath.c_str(), IN_MODIFY);
+      watch_to_cache_idx[current_item.watch] = current_idx;
+
       current_item.prev_item_idx = highest_idx; //promote to highest
       current_item.next_item_idx = -1;
       highest_idx = current_idx; //new highest position
@@ -141,6 +154,15 @@ public:
       return true;
     }else{
       return false;
+    }
+  }
+    
+  void inotify_event_handler(int watch){ //we are only monitoring for events which outdate files we are monitoring
+    if(watch_to_cache_idx.count(watch)){
+      const auto cache_idx = watch_to_cache_idx[watch];
+      if(cache_idx < cache_buffer.size()){
+        cache_buffer[cache_idx].outdated = true;
+      }
     }
   }
 

@@ -24,20 +24,28 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
   std::string str = "hello world....\n";
   
-  auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
+  // auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+  // tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
 }
 
 template<server_type T>
 void custom_read_cb(int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
-  const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
 
-  if(basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff))){ // try inserting the item
-    const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx, basic_web_server->tcp_clients[client_idx]);
-    tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
-  }else{ // if insertion failed, it's not in the cache, so just send the original buffer
-    tcp_server->write_connection(client_idx, std::move(buff)); // this works because the rvalue reference of buff isn't assigned to anywhere in try_insert_item (since it failed), so buff still has its data
+  if(fd == basic_web_server->web_cache.inotify_fd){
+    basic_web_server->web_cache.inotify_event_handler(reinterpret_cast<inotify_event*>(&buff[0])->wd);
+    tcp_server->custom_read_req(basic_web_server->web_cache.inotify_fd, sizeof(inotify_event)); //always read from inotify_fd - we only read size of event, since we monitor files
+  }else{
+    close(fd); //close the file fd finally, since we've read what we needed to
+
+    const auto &filepath = basic_web_server->tcp_clients[client_idx].last_requested_read_filepath;
+
+    if(basic_web_server->web_cache.try_insert_item(client_idx, filepath, std::move(buff))){ // try inserting the item
+      const auto ret_data = basic_web_server->web_cache.fetch_item(filepath, client_idx, basic_web_server->tcp_clients[client_idx]);
+      tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
+    }else{ // if insertion failed, it's not in the cache, so just send the original buffer
+      tcp_server->write_connection(client_idx, std::move(buff)); // this works because the rvalue reference of buff isn't assigned to anywhere in try_insert_item (since it failed), so buff still has its data
+    }
   }
 }
 

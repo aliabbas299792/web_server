@@ -64,7 +64,6 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
       }
 
       if(frame_contents.size() > 0){
-        std::cout << "frame size was: " << frame_contents.size() << "\n";
         //this is where you'd deal with websocket connections
         std::string str = "Hello from the server.\n";
 
