@@ -1,6 +1,6 @@
-# Simple Web Server
+# Web Server
 ### What it is
-It's a simple web server made using liburing, to run on Linux operating systems with Kernel version >= 5.8.<br>
+It's a web server made using liburing, to run on Linux operating systems with Kernel version >= 5.8.<br>
 It looks for files to server in the `public` subdirectory.
 
 ### Configuration
