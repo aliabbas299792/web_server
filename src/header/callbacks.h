@@ -1,7 +1,16 @@
 #ifndef TCP_SERVER_CALLBACKS
 #define TCP_SERVER_CALLBACKS
 
-#include "web_server/web_server.h"
+#include "server_metadata.h"
+#include "web_server/common_structs_enums.h"
+
+#include <sys/inotify.h>
+
+template<server_type T>
+class web_server;
+
+template<server_type T>
+class server;
 
 using tls_server = server<server_type::TLS>;
 using plain_server = server<server_type::NON_TLS>;

@@ -12,6 +12,7 @@ FULLCHAIN: /home/me/ssl/fullchain.cer
 PKEY: /home/me/ssl/example.abc.key
 PORT: 80
 TLS_PORT: 443
+SERVER_THREADS: 10
 ```
 It's supposed to be in the same directory as the server.
 

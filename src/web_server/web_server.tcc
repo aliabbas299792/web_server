@@ -114,7 +114,6 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
   std::memcpy(&send_buffer[0], headers.c_str(), headers.size());
 
   if(cache_data.found){
-    std::cout << "cache hit\n";
     tcp_server->write_connection(client_idx, cache_data.buff, cache_data.size);
   }else{
     tcp_clients[client_idx].last_requested_read_filepath =  filepath; //so that when the file is read, it will be stored with the correct file path
