@@ -1,5 +1,5 @@
 #pragma once
-#include "../header/web_server.h"
+#include "../header/web_server/web_server.h"
 
 #include <openssl/sha.h>
 #include <openssl/evp.h>
@@ -22,7 +22,7 @@ void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_ke
 template<server_type T>
 void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int length){ //we assume that the tcp server has been set by this point
   auto ws_client_idx = tcp_clients[client_idx].ws_client_idx;
-  std::vector<std::vector<uchar>> frames{};
+  std::vector<std::vector<char>> frames{};
   auto frame_pair = get_ws_frames(buffer, length, ws_client_idx);
 
   auto &client_data = websocket_clients[ws_client_idx];
@@ -32,11 +32,11 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
     frames = std::move(frame_pair.second);
     //by this point the frame has definitely been fully received
 
-    std::vector<uchar> frame_contents{};
+    std::vector<char> frame_contents{};
     
-    for(const auto &frame : frames){
+    for(auto &frame : frames){
       if(frame.size()){
-        auto processed_data = decode_websocket_frame(frame);
+        auto processed_data = decode_websocket_frame(std::move(frame)); //the frame is decoded then returned
         
         frame_contents.clear();
         //for now finishes and prints last 200 bytes
@@ -64,10 +64,16 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
       }
 
       if(frame_contents.size() > 0){
+        std::cout << "frame size was: " << frame_contents.size() << "\n";
         //this is where you'd deal with websocket connections
         std::string str = "Hello from the server.\n";
 
+        for(int i = 0; i < 1024*1024*25; i++){
+          str+="A";
+        }
+
         auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+        std::vector<char> buffer = std::move(frame_contents);
         websocket_write(ws_client_idx, std::move(data));
 
         //we're going to close immediately after, so make sure the program knows there is this write op happening
@@ -182,6 +188,9 @@ std::vector<char> web_server<T>::make_ws_frame(const std::string &packet_msg, we
     data[1] = 127;
     *((ulong*)&data[2]) = payload_len_long;
   }
+
+  if(data.size() == 2) // for handling 0 length websocket messages (I think)
+    return data;
   
   std::memcpy(&data[offset], packet_msg.c_str(), msg_size);
 
@@ -206,7 +215,7 @@ bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
   auto &client_data = websocket_clients[ws_client_idx];
   if(client_data.currently_writing == 1){
     if(client_data.close){
-      tcp_server->close_connection(client_data.client_idx);
+      close_connection(client_data.client_idx);
       all_websocket_connections.erase(ws_client_idx); //connection definitely closed by now
       freed_indexes.insert(ws_client_idx);
     }
@@ -217,10 +226,11 @@ bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
 }
 
 template<server_type T>
-std::pair<int, std::vector<uchar>> web_server<T>::decode_websocket_frame(std::vector<uchar> data){
-  const uint fin = (data[0] & 0x80) == 0x80;
-  const uint opcode = data[0] & 0xf;
-  const uint mask = (data[1] & 0x80) == 0x80;
+std::pair<int, std::vector<char>> web_server<T>::decode_websocket_frame(std::vector<char> &&data){
+  const auto *data_ptr = reinterpret_cast<uchar*>(&data[0]);
+  const uint fin = (data_ptr[0] & 0x80) == 0x80;
+  const uint opcode = data_ptr[0] & 0xf;
+  const uint mask = (data_ptr[1] & 0x80) == 0x80;
 
   if(!mask) return {-1, {}}; //mask must be set
   if(opcode == 0x8) return {-3, {}}; //the close opcode
@@ -228,31 +238,30 @@ std::pair<int, std::vector<uchar>> web_server<T>::decode_websocket_frame(std::ve
 
   int offset = 0;
 
-  ulong length = data[1] & 0x7f;
+  ulong length = data_ptr[1] & 0x7f;
   if(length == 126){
     offset = 2;
-    length = ntohs(*((u_short*)&data[2]));
+    length = ntohs(*((u_short*)&data_ptr[2]));
   }else if(length == 127){
     offset = 8;
-    length = ntohs(*((u_long*)&data[2]));
+    length = ntohs(*((u_long*)&data_ptr[2]));
   }
 
-  const std::vector<uchar> masking_key{ data[2+offset], data[3+offset], data[4+offset], data[5+offset] };
+  const std::vector<char> masking_key{ data[2+offset], data[3+offset], data[4+offset], data[5+offset] };
 
-  std::vector<uchar> decoded{};
   for(int i = 6+offset; i < data.size(); i++){
-    decoded.push_back(data[i] ^ masking_key[(i - (6 + offset)) % 4]);
+    data[i] = data_ptr[i] ^ masking_key[(i - (6 + offset)) % 4];
   }
 
-  if(opcode == 0x9) return {2, decoded}; //the ping opcode
-  if(!fin) return {-2, decoded}; //fin bit not set, so put this in a pending larger buffer of decoded data
+  if(opcode == 0x9) return {2, data}; //the ping opcode
+  if(!fin) return {-2, data}; //fin bit not set, so put this in a pending larger buffer of decoded data
   
-  return {1, decoded}; //succesfully decoded, and is the final frame
+  return {1, data}; //succesfully decoded, and is the final frame
 }
 
 template<server_type T>
-std::pair<int, std::vector<std::vector<uchar>>> web_server<T>::get_ws_frames(char *buffer, int length, int ws_client_idx){
-  std::vector<std::vector<uchar>> frames;
+std::pair<int, std::vector<std::vector<char>>> web_server<T>::get_ws_frames(char *buffer, int length, int ws_client_idx){
+  std::vector<std::vector<char>> frames;
 
   int remaining_length = length;
 
@@ -317,7 +326,7 @@ std::pair<int, std::vector<std::vector<uchar>>> web_server<T>::get_ws_frames(cha
   //by this point only the beginnings of frames should be left, if the remaining_length is not 0
   if(remaining_length > 0){
     auto *pending_item = &client_data.receiving_data;
-    pending_item->buffer = std::vector<uchar>(buffer, buffer + remaining_length);
+    pending_item->buffer = std::vector<char>(buffer, buffer + remaining_length);
     if(remaining_length > 10){
       pending_item->length = get_ws_frame_length(buffer);
     }else{

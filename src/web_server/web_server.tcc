@@ -1,11 +1,6 @@
 #pragma once
-#include "../header/web_server.h"
+#include "../header/web_server/web_server.h"
 #include "../header/utility.h"
-
-template<server_type T>
-web_server<T>::web_server(){
-  io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
-}
 
 template<server_type T>
 bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
@@ -111,7 +106,7 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
 
   std::memcpy(&send_buffer[0], headers.c_str(), headers.size());
   
-  const auto ret_data = web_cache.fetch_item(filepath, client_idx);
+  const auto ret_data = web_cache.fetch_item(filepath, client_idx, tcp_clients[client_idx]);
 
   if(ret_data.found){
     tcp_server->write_connection(client_idx, ret_data.buff, ret_data.size);
@@ -137,7 +132,8 @@ void web_server<T>::new_tcp_client(int client_idx){
 
 template<server_type T>
 void web_server<T>::kill_tcp_client(int client_idx){
-  web_cache.finished_with_item(client_idx);
+  web_cache.finished_with_item(client_idx, tcp_clients[client_idx]);
+  tcp_clients[client_idx].using_file = false;
 }
 
 template<server_type T>

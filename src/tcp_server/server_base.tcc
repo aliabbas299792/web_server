@@ -35,6 +35,7 @@ void server_base<T>::start(){ //function to run the server
           req->buffer = nullptr; //done with the request buffer
         if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
           static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
+          if(close_cb != nullptr) close_cb(req->client_idx, static_cast<server<T>*>(this), custom_obj);
         }
       }else if(req->event == event_type::EVENTFD) {
         if(*reinterpret_cast<uint64_t*>(req->read_data.data()) < 10){
