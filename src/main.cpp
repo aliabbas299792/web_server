@@ -39,7 +39,7 @@ int main(){
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
 
-    tcp_server.kill_server();
+    // tcp_server.kill_server();
     
     server_thread.join();
   } else {
@@ -69,7 +69,7 @@ int main(){
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     tcp_server.notify_event();
 
-    tcp_server.kill_server();
+    // tcp_server.kill_server();
     
     server_thread.join();
   }

@@ -28,6 +28,7 @@ void server_base<T>::start(){ //function to run the server
 
       if(req->event != event_type::ACCEPT &&
         req->event != event_type::EVENTFD &&
+        req->event != event_type::CUSTOM_READ &&
         (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
       {
         if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)

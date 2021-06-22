@@ -56,8 +56,6 @@ class web_server{
 
   std::string get_content_type(std::string filepath);
 
-  std::vector<tcp_client> tcp_clients{}; //storing additional data related to the client_idxs passed to this layer
-
   //
   ////http stuff
   //
@@ -70,6 +68,7 @@ class web_server{
   ulong get_ws_frame_length(const char *buffer); //helper function which reads the websocket header to get the length of the message
   std::pair<int, std::vector<uchar>> decode_websocket_frame(std::vector<uchar> data); //decodes a single full websocket frame
   std::pair<int, std::vector<std::vector<uchar>>> get_ws_frames(char *buffer, int length, int ws_client_idx); //gets any full websocket frames possible
+  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
 
   //writing data to connections
   void websocket_write(int ws_client_idx, std::vector<char> &&buff);
@@ -96,10 +95,12 @@ public:
 
   void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
 
-  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
-
   void new_tcp_client(int client_idx);
   void kill_tcp_client(int client_idx);
+
+  void close_connection(int client_idx);
+
+  std::vector<tcp_client> tcp_clients{}; //storing additional data related to the client_idxs passed to this layer
   
   //
   ////http public methods

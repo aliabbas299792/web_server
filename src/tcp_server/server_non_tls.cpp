@@ -46,6 +46,16 @@ void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<
   }
 }
 
+void server<server_type::NON_TLS>::write_connection(int client_idx, char* buff, size_t length) {
+  auto *client = &clients[client_idx];
+  client->send_data.emplace(buff, length);
+  if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
+    auto &data_ref = client->send_data.front();
+    auto &buff = data_ref.ptr_buff;
+    add_write_req(client_idx, event_type::WRITE, buff, length);
+  }
+}
+
 void server<server_type::NON_TLS>::close_connection(int client_idx) {
   auto &client = clients[client_idx];
 
@@ -68,16 +78,6 @@ int server<server_type::NON_TLS>::add_write_req_continued(request *req, int writ
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
   return 0;
-}
-
-void server<server_type::NON_TLS>::write_connection(int client_idx, char* buff, size_t length) {
-  auto *client = &clients[client_idx];
-  client->send_data.emplace(buff, length);
-  if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
-    auto &data_ref = client->send_data.front();
-    auto &buff = data_ref.ptr_buff;
-    add_write_req(client_idx, event_type::WRITE, buff, length);
-  }
 }
 
 void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res){
@@ -113,8 +113,8 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
         queue_ptr->pop(); //remove the last processed item
         if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
           auto &data_ref = queue_ptr->front();
-          auto &buff = data_ref.multi_write_data ? data_ref.multi_write_data->buff : data_ref.buff;
-          add_write_req(req->client_idx, event_type::WRITE, &buff[0], buff.size()); //adds a plain HTTP write request
+          auto write_data_stuff = data_ref.get_ptr_and_size();
+          add_write_req(req->client_idx, event_type::WRITE, write_data_stuff.buff, write_data_stuff.length); //adds a plain HTTP write request
         }
       }
       if(write_cb != nullptr) write_cb(req->client_idx, this, custom_obj); //call the write callback

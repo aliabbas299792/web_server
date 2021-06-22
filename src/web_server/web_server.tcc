@@ -132,3 +132,9 @@ template<server_type T>
 void web_server<T>::kill_tcp_client(int client_idx){
 
 }
+
+template<server_type T>
+void web_server<T>::close_connection(int client_idx){
+  kill_tcp_client(client_idx); //destroy any data related to this request
+  tcp_server->close_connection(client_idx);
+}
