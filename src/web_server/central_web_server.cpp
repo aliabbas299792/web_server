@@ -24,9 +24,15 @@ void central_web_server::tls_thread_server_runner(){
   });
     
   while(true){
-    tcp_server.notify_event();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    if(tcp_server.running_server){
+      tcp_server.notify_event();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }else{
+      break;
+    }
   }
+
+  basic_web_server.~web_server(); // explitictly clean it up
 }
 
 void central_web_server::plain_thread_server_runner(){
@@ -46,6 +52,8 @@ void central_web_server::plain_thread_server_runner(){
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
   
   tcp_server.start();
+
+  basic_web_server.~web_server(); // explitictly clean it up
 }
 
 void central_web_server::start_server(const char *config_file_path){

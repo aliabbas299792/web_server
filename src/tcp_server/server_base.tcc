@@ -45,6 +45,8 @@ void server_base<T>::start(){ //function to run the server
             close(listener_fd);
             close(event_fd);
             close(server_signal_eventfd);
+
+            running_server = false; // the server is no longer running since it was killed
             break;
           }else{
             std::cout << "some other signal... " << signal << "\n";

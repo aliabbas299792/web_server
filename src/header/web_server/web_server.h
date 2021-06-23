@@ -142,6 +142,10 @@ public:
   //websocket data
   std::unordered_set<int> all_websocket_connections{}; //this is used for the duration of the connection (even after we've sent the close request)
   std::unordered_set<int> active_websocket_connections_client_idxs{}; //this is only active up until we call a close request, has client_idx
+
+  ~web_server(){
+    close(web_cache.inotify_fd);
+  }
 };
 
 class central_web_server {
