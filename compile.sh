@@ -12,5 +12,6 @@ cmake \
 cd ..
 cd build && make
 cp compile_commands.json .. # for clangd
+rm -rf server
 cp webserver ../server
 cd ..

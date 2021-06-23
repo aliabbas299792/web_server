@@ -22,17 +22,19 @@ void central_web_server::tls_thread_server_runner(){
   std::thread server_thread([&tcp_server](){
     tcp_server.start();
   });
-    
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
   while(true){
-    if(tcp_server.running_server){
+    if(tcp_server.is_active){ // only notify it if the server is active
       tcp_server.notify_event();
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }else{
-      break;
+      break; // otherwise the server has been killed, so join and end this thread
     }
   }
 
-  basic_web_server.~web_server(); // explitictly clean it up
+  server_thread.join();
 }
 
 void central_web_server::plain_thread_server_runner(){
@@ -52,8 +54,6 @@ void central_web_server::plain_thread_server_runner(){
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
   
   tcp_server.start();
-
-  basic_web_server.~web_server(); // explitictly clean it up
 }
 
 void central_web_server::start_server(const char *config_file_path){

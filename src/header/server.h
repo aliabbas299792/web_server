@@ -154,6 +154,8 @@ class server_base {
     int setup_client(int client_idx);
 
     void event_read(int event_fd); //will set a read request for the eventfd
+
+    bool ran_server = false;
   private:
     int event_fd = eventfd(0, 0); //used to awaken this thread for some event
     int server_signal_eventfd = eventfd(0, 0); //used to awaken this thread for some special events (i.e to be killed)
@@ -172,8 +174,6 @@ class server_base {
     static int shared_ring_fd; //pointer to a single io_uring ring fd, who's async backend is shared
     static int current_max_id; //max id of thread
   public:
-    bool running_server = false;
-    
     server_base(int listen_port);
     void start(); //function to start the server
 
@@ -184,6 +184,8 @@ class server_base {
 
     void notify_event();
     void kill_server(); // will kill the server
+
+    bool is_active = true; // is the server active (only false once it received an exit signal)
 };
 
 template<>

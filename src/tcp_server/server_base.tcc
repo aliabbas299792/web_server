@@ -13,8 +13,8 @@ int server_base<T>::current_max_id = 0;
 template<server_type T>
 void server_base<T>::start(){ //function to run the server
   std::cout << "Running server\n";
-  if(!running_server){
-    running_server = true;
+  if(!ran_server){
+    ran_server = true;
 
     io_uring_cqe *cqe;
 
@@ -45,8 +45,8 @@ void server_base<T>::start(){ //function to run the server
             close(listener_fd);
             close(event_fd);
             close(server_signal_eventfd);
-
-            running_server = false; // the server is no longer running since it was killed
+            
+            is_active = false; // received an exit signal, main server program will now exit, so it's now inactive
             break;
           }else{
             std::cout << "some other signal... " << signal << "\n";
