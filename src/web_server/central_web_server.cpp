@@ -27,7 +27,6 @@ void central_web_server::tls_thread_server_runner(){
     tcp_server.notify_event();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
-
 }
 
 void central_web_server::plain_thread_server_runner(){
@@ -49,7 +48,7 @@ void central_web_server::plain_thread_server_runner(){
   tcp_server.start();
 }
 
-central_web_server::central_web_server(const char *config_file_path){
+void central_web_server::start_server(const char *config_file_path){
   auto file_fd = open(config_file_path, O_RDONLY);
   if(file_fd == -1)
     fatal_error("Ensure the .config file is in this directory");
@@ -97,6 +96,10 @@ central_web_server::central_web_server(const char *config_file_path){
     fatal_error("Please provide the PORT setting in the config file");
   }
 
+  this->run(); // run the program
+}
+
+void central_web_server::run(){
   // the below is more like demo code to test out the multithreaded features
 
   //done reading config
@@ -110,8 +113,13 @@ central_web_server::central_web_server(const char *config_file_path){
     else
       thread_container.push_back(std::thread(plain_thread_server_runner));
   }
-  
-  while(true){
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  }
+
+  for(auto &thread : thread_container) // wait for all threads to exit before exiting the program
+    thread.join();
+}
+
+void central_web_server::kill_server(){
+  server<server_type::TLS>::kill_all_servers(); // kills all TLS servers
+  server<server_type::NON_TLS>::kill_all_servers(); // kills all non TLS servers
+  // this will mean the run() function will exit
 }

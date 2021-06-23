@@ -11,7 +11,6 @@ void server<server_type::NON_TLS>::kill_all_servers() {
   std::unique_lock<std::mutex> non_tls_access_lock(non_tls_server_vector_access);
   for(const auto server : non_tls_servers)
     server->kill_server();
-  std::this_thread::sleep_for(std::chrono::milliseconds(300)); // .3s should be enough to kill off all those servers
 }
 
 server<server_type::NON_TLS>::server(

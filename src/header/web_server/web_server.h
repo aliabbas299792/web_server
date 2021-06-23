@@ -153,8 +153,22 @@ private:
 
   static void tls_thread_server_runner();
   static void plain_thread_server_runner();
+
+  central_web_server() {};
+
+  void run();
 public:
-  central_web_server(const char *config_file_path);
+  void start_server(const char *config_file_path);
+
+  central_web_server(central_web_server const&) = delete;
+  void operator=(central_web_server const&) = delete;
+
+  static central_web_server& instance(){
+    static central_web_server inst;
+    return inst;
+  }
+  
+  void kill_server();
 };
 
 #include "../../web_server/web_server.tcc"

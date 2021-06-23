@@ -1,5 +1,5 @@
 #include "../header/utility.h"
-#include "../header/server.h"
+#include "../header/web_server/web_server.h"
 
 #include <thread>
 #include <malloc.h>
@@ -77,8 +77,5 @@ std::unordered_map<std::string, std::string> read_config(){
 void sigint_handler(int sig_number){
   std::cout << "\nShutting down...\n";
 
-  server<server_type::TLS>::kill_all_servers(); // kills all TLS servers
-  server<server_type::NON_TLS>::kill_all_servers(); // kills all non TLS servers
-  
-  exit(0);
+  central_web_server::instance().kill_server(); // the program gracefully exits without needing to explicitly exit
 }

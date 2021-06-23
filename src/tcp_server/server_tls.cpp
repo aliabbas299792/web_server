@@ -11,7 +11,6 @@ void server<server_type::TLS>::kill_all_servers() {
   std::unique_lock<std::mutex> tls_access_lock(tls_server_vector_access);
   for(const auto server : tls_servers)
     server->kill_server();
-  std::this_thread::sleep_for(std::chrono::milliseconds(500)); // .5s should be enough to kill off all those servers
 }
 
 void server<server_type::TLS>::close_connection(int client_idx) {
