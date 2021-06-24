@@ -15,36 +15,38 @@ void server<server_type::TLS>::kill_all_servers() {
 
 void server<server_type::TLS>::close_connection(int client_idx) {
   auto &client = clients[client_idx];
-  wolfSSL_shutdown(client.ssl);
-  wolfSSL_free(client.ssl);
+  if(client.num_write_reqs == 0){
+    wolfSSL_shutdown(client.ssl);
+    wolfSSL_free(client.ssl);
 
-  close(client.sockfd);
+    close(client.sockfd);
 
-  client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
-  active_connections.erase(client_idx);
-  client.send_data = {}; //free up all the data we might have wanted to send
+    client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
+    active_connections.erase(client_idx);
+    client.send_data = {}; //free up all the data we might have wanted to send
 
-  freed_indexes.insert(client_idx);
+    freed_indexes.insert(client_idx);
+  }
 }
 
 void server<server_type::TLS>::write_connection(int client_idx, std::vector<char> &&buff) {
-  auto *client = &clients[client_idx];
-  client->send_data.emplace(std::move(buff));
-  const auto &data_ref = client->send_data.front();
+  auto &client = clients[client_idx];
+  client.send_data.emplace(std::move(buff));
+  const auto &data_ref = client.send_data.front();
   auto &to_write_buff = data_ref.buff;
   
-  if(client->send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
-    wolfSSL_write(client->ssl, &to_write_buff[0], to_write_buff.size()); //writes the data using wolfSSL
+  if(client.send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
+    wolfSSL_write(client.ssl, &to_write_buff[0], to_write_buff.size()); //writes the data using wolfSSL
 }
 
 void server<server_type::TLS>::write_connection(int client_idx, char *buff, size_t length) {
-  auto *client = &clients[client_idx];
-  client->send_data.emplace(buff, length);
-  const auto &data_ref = client->send_data.front();
+  auto &client = clients[client_idx];
+  client.send_data.emplace(buff, length);
+  const auto &data_ref = client.send_data.front();
   auto &to_write_buff = data_ref.ptr_buff;
   
-  if(client->send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
-    wolfSSL_write(client->ssl, to_write_buff, length); //writes the data using wolfSSL
+  if(client.send_data.size() == 1) //only do wolfSSL_write() if this is the only thing to write
+    wolfSSL_write(client.ssl, to_write_buff, length); //writes the data using wolfSSL
 }
 
 server<server_type::TLS>::server(
@@ -143,12 +145,14 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
     }
     case event_type::ACCEPT_WRITE: { //used only for when wolfSSL needs to write data during the TLS handshake
       auto &client = clients[req->client_idx];
+      client.num_write_reqs--; // decrement number of active write requests
       client.accept_last_written = cqe_res; //this is the amount that was last written, used in the tls_write callback
       wolfSSL_accept(client.ssl); //call accept again
       break;
     }
     case event_type::WRITE: { //used for generally writing over TLS
       auto &client = clients[req->client_idx];
+      client.num_write_reqs--; // decrement number of active write requests
       if(client.send_data.size() > 0){ //ensure this connection is still active
         auto &data_ref = client.send_data.front();
         auto write_data_stuff = data_ref.get_ptr_and_size();

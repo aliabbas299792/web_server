@@ -36,20 +36,20 @@ server<server_type::NON_TLS>::server(
 }
 
 void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff) {
-  auto *client = &clients[client_idx];
-  client->send_data.emplace(std::move(buff));
-  if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
-    auto &data_ref = client->send_data.front();
+  auto &client = clients[client_idx];
+  client.send_data.emplace(std::move(buff));
+  if(client.send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
+    auto &data_ref = client.send_data.front();
     auto &buff = data_ref.buff;
     add_write_req(client_idx, event_type::WRITE, &buff[0], buff.size());
   }
 }
 
 void server<server_type::NON_TLS>::write_connection(int client_idx, char* buff, size_t length) {
-  auto *client = &clients[client_idx];
-  client->send_data.emplace(buff, length);
-  if(client->send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
-    auto &data_ref = client->send_data.front();
+  auto &client = clients[client_idx];
+  client.send_data.emplace(buff, length);
+  if(client.send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
+    auto &data_ref = client.send_data.front();
     auto &buff = data_ref.ptr_buff;
     add_write_req(client_idx, event_type::WRITE, buff, length);
   }
@@ -58,12 +58,14 @@ void server<server_type::NON_TLS>::write_connection(int client_idx, char* buff, 
 void server<server_type::NON_TLS>::close_connection(int client_idx) {
   auto &client = clients[client_idx];
 
-  active_connections.erase(client_idx);
-  client.send_data = {}; //free up all the data we might have wanted to send
+  if(client.num_write_reqs == 0){ // only erase this client if they haven't got any active write requests
+    active_connections.erase(client_idx);
+    client.send_data = {}; //free up all the data we might have wanted to send
 
-  close(client.sockfd);
+    close(client.sockfd);
 
-  freed_indexes.insert(client_idx);
+    freed_indexes.insert(client_idx);
+  }
 }
 
 int server<server_type::NON_TLS>::add_write_req_continued(request *req, int written) { //for long plain HTTP write requests, this writes at the correct offset
@@ -99,6 +101,7 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
     }
     case event_type::WRITE: {
       auto &client = clients[req->client_idx];
+      client.num_write_reqs--; // decrement number of active write requests
       if(cqe_res + req->written < req->total_length && cqe_res > 0){ //if the current request isn't finished, continue writing
         int rc = add_write_req_continued(req, cqe_res);
         req = nullptr; //we don't want to free the req yet

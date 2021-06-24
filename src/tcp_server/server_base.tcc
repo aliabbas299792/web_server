@@ -26,16 +26,27 @@ void server_base<T>::start(){ //function to run the server
         fatal_error("io_uring_wait_cqe");
       request *req = (request*)cqe->user_data;
 
+      if(req->client_idx > 0 && clients[req->client_idx].id == req->ID){
+        std::cout << clients[req->client_idx].num_write_reqs << "\n";
+      }
+
       if(req->event != event_type::ACCEPT &&
         req->event != event_type::EVENTFD &&
         req->event != event_type::CUSTOM_READ &&
-        (cqe->res <= 0 || clients[req->client_idx].id != req->ID))
+        (cqe->res <= 0 || (req->client_idx > 0 && clients[req->client_idx].id != req->ID)))
       {
+        // CHECK THIS
         if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
           req->buffer = nullptr; //done with the request buffer
-        if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){
-          static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
-          if(close_cb != nullptr) close_cb(req->client_idx, static_cast<server<T>*>(this), custom_obj);
+        if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){ // only do these if the client hasn't been replaced (I can't think of a situation where they would be replaced by this point, but just in case)
+          auto &client = clients[req->client_idx];
+          if(req->event == event_type::WRITE || req->event == event_type::ACCEPT_WRITE)
+            client.num_write_reqs--; // a write operation failed, decrement the number of active write operaitons for this client
+            
+          if(client.num_write_reqs == 0){ // only if no write operations are active, close the connection
+            static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
+            if(close_cb != nullptr) close_cb(req->client_idx, static_cast<server<T>*>(this), custom_obj);
+          }
         }
       }else if(req->event == event_type::EVENTFD) {
         if(*reinterpret_cast<uint64_t*>(req->read_data.data()) < 10){
@@ -54,7 +65,7 @@ void server_base<T>::start(){ //function to run the server
           event_read(server_signal_eventfd); // rearm the signal eventfd reading
         }else{
           // std::cout << "normal eventfd signal\n";
-          event_cb(static_cast<server<T>*>(this), custom_obj);
+          if(event_cb != nullptr) event_cb(static_cast<server<T>*>(this), custom_obj);
           event_read(event_fd); // rearm the eventfd reading
         }
       }else if(req->event == event_type::CUSTOM_READ){
@@ -233,6 +244,8 @@ int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer
   req->buffer = buffer;
   req->event = event;
   req->ID = clients[client_idx].id;
+
+  clients[client_idx].num_write_reqs++; // another write request is now active
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_write(sqe, clients[client_idx].sockfd, buffer, length, 0); //do not write at an offset
