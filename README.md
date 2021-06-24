@@ -34,3 +34,6 @@ https://github.com/wolfSSL/wolfssl
 - `./src/tcp_server` contains code for the main TCP/TLS server
 - `./src/web_server` has the code for implementing HTTP and WebSockets
 - `main.cpp` ties those together to provide a demo
+
+### Known issues
+It's possible you get really high CPU usage due to `inotify_init()` failing and returning `-1`, so the `read`'s which followed would return `-9` and hence get stuck in a loop of failed reads, this may be due to errno `24`. Simply increase the inotify max user instances with `sudo sysctl fs.inotify.max_user_instances=256`, or some other command relating to increasing the number of possible `fd`'s on a system, this would probably fix the issue on the next startup.
