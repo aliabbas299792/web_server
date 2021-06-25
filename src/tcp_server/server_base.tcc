@@ -223,8 +223,6 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
     req->client_idx = client_idx;
     req->ID = clients[client_idx].id;
     req->read_data.resize(READ_SIZE);
-
-    if(event == event_type::ACCEPT_READ || event == event_type::READ)
     
     io_uring_prep_read(sqe, clients[client_idx].sockfd, &(req->read_data[0]), READ_SIZE, 0); //don't read at an offset
     io_uring_sqe_set_data(sqe, req);

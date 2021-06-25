@@ -118,6 +118,8 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
     }
     case event_type::ACCEPT_READ: {
       auto &client = clients[req->client_idx];
+      client.read_req_active = false;
+
       const auto &ssl = client.ssl;
       if(client.recv_data.size() == 0) { //if there is no data in the buffer, add it
         client.recv_data = std::move(req->read_data);
@@ -175,6 +177,8 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
     }
     case event_type::READ: { //used for reading over TLS
       auto &client = clients[req->client_idx];
+      client.read_req_active = false;
+
       int to_read_amount = cqe_res; //the default read size
       if(client.recv_data.size()) { //will correctly deal with needing to call wolfSSL_read multiple times
         auto &vec_member = client.recv_data;
@@ -197,7 +201,6 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       if(total_read == 0) add_read_req(req->client_idx, event_type::READ); //total_read of 0 implies that data must be read into the recv_data buffer
       
       if(total_read > 0){
-        clients[req->client_idx].read_req_active = false;
         if(read_cb != nullptr) read_cb(req->client_idx, &buffer[0], total_read, this, custom_obj);
         if(!client.recv_data.size())
           client.recv_data = {};
