@@ -30,12 +30,6 @@ int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, serve
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
-extern uint64_t mem_usage_event;
-extern uint64_t mem_usage_read;
-extern uint64_t mem_usage_write;
-extern uint64_t mem_usage_customread;
-extern uint64_t mem_usage_accept;
-
 template<server_type T>
 using accept_callback = void (*)(ACCEPT_CB_PARAMS);
 
@@ -231,29 +225,15 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     );
 
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients){
-
-      // std::cout << num_clients << "\n";
+    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
       if(num_clients > 0){
-        // std::vector<unsigned char> data2{ 130, 16, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 46, 46, 46, 46, 10};
-        // std::vector<char> buff{};
-        // buff.insert(buff.begin(), data2.begin(), data2.end());
-
-        // auto data = new multi_write(std::move(buff), num_clients);
-
-        // for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
-        //   auto &client = clients[(int)*client_idx_ptr];
-        //   client.send_data.emplace(data);
-        //   if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
-        //     add_write_req(*client_idx_ptr, event_type::WRITE, &(data->buff[0]), data->buff.size());
-        // }
+        auto data = new multi_write(std::move(buff), num_clients);
 
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
-          std::vector<unsigned char> data2{ 130, 16, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 46, 46, 46, 46, 10};
-          std::vector<char> buff{};
-          buff.insert(buff.begin(), data2.begin(), data2.end());
-          
-          write_connection(*client_idx_ptr, std::move(buff));
+          auto &client = clients[(int)*client_idx_ptr];
+          client.send_data.emplace(data);
+          if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
+            add_write_req(*client_idx_ptr, event_type::WRITE, &(data->buff[0]), data->buff.size());
         }
       }
     }
@@ -269,11 +249,6 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
         }
       }
     }
-
-    // template<typename U>
-    // void broadcast_message(U begin, U end, int num_clients, char *buff, size_t length){
-      
-    // }
 
     static void kill_all_servers(); // will kill all non tls servers on any thread
 
@@ -315,25 +290,15 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     );
     
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients){
+    void broadcast_message(U begin, U end, int num_clients, std::vector<char> &&buff){
       if(num_clients > 0){
-        // auto data = new multi_write(std::move(buff), num_clients);
-        // for(auto i : buff)
-        //   std::cout << int(static_cast<unsigned char>(i)) << " ";
-        // std::cout << "\n";
-        std::vector<unsigned char> data2{ 130, 16, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 46, 46, 46, 46, 10};
-        std::vector<char> data{};
-        data.insert(data.begin(), data2.begin(), data2.end());
-
-        auto multi_write_data = new multi_write(std::move(data), num_clients);
+        auto data = new multi_write(std::move(buff), num_clients);
 
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
-          // write_connection(*client_idx_ptr, ptr, len);
           auto &client = clients[(int)*client_idx_ptr];
-          // std::cout << client.recv_data.size() << " -- " << client.send_data.size() << "\n";
-          client.send_data.emplace(multi_write_data);
+          client.send_data.emplace(data);
           if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
-            wolfSSL_write(client.ssl, &(multi_write_data->buff[0]), multi_write_data->buff.size());
+            wolfSSL_write(client.ssl, &(data->buff[0]), data->buff.size());
         }
       }
     }

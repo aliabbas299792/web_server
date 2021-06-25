@@ -75,27 +75,6 @@ void server_base<T>::start(){ //function to run the server
         static_cast<server<T>*>(this)->req_event_handler(req, cqe->res);
       }
 
-      if(req){
-        auto event = req->event;
-        if(event == event_type::ACCEPT_WRITE || event == event_type::WRITE)
-          mem_usage_write -= sizeof(request);
-        else if(event == event_type::ACCEPT_READ || event == event_type::READ)
-          mem_usage_read -= sizeof(request);
-        else if(event == event_type::ACCEPT)
-          mem_usage_accept -= sizeof(request);
-        else if(event == event_type::CUSTOM_READ)
-          mem_usage_customread -= sizeof(request);
-        else if(event == event_type::EVENTFD)
-          mem_usage_event -= sizeof(request);
-        delete req;
-
-        std::cout << "mem_usage_write: " << mem_usage_write << "\n";
-        std::cout << "mem_usage_read: " << mem_usage_read << "\n";
-        std::cout << "mem_usage_customread: " << mem_usage_customread << "\n";
-        std::cout << "mem_usage_event: " << mem_usage_event << "\n";
-        std::cout << "mem_usage_accept: " << mem_usage_accept << "\n";
-      }
-
       io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
     }
   }
@@ -117,7 +96,6 @@ template<server_type T>
 void server_base<T>::event_read(int event_fd){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = new request(); //enough space for the request struct
-  mem_usage_event += sizeof(request);
   req->read_data.resize(sizeof(uint64_t));
   req->event = event_type::EVENTFD;
   
@@ -227,7 +205,6 @@ int server_base<T>::add_accept_req(int listener_fd, sockaddr_storage *client_add
   io_uring_prep_accept(sqe, listener_fd, (sockaddr*)client_address, client_address_length, 0); //no flags set, prepares an SQE
 
   request *req = new request();
-  mem_usage_accept += sizeof(request);
   req->event = event_type::ACCEPT;
 
   io_uring_sqe_set_data(sqe, req); //sets the SQE data
@@ -248,7 +225,6 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
     req->read_data.resize(READ_SIZE);
 
     if(event == event_type::ACCEPT_READ || event == event_type::READ)
-      mem_usage_read += sizeof(request);
     
     io_uring_prep_read(sqe, clients[client_idx].sockfd, &(req->read_data[0]), READ_SIZE, 0); //don't read at an offset
     io_uring_sqe_set_data(sqe, req);
@@ -271,9 +247,6 @@ int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer
   req->event = event;
   req->ID = clients[client_idx].id;
 
-  if(event == event_type::ACCEPT_WRITE || event == event_type::WRITE)
-    mem_usage_write += sizeof(request);
-
   clients[client_idx].num_write_reqs++; // another write request is now active
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
@@ -287,7 +260,6 @@ int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer
 template<server_type T>
 void server_base<T>::custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff, size_t read_amount){
   request *req = new request();
-  mem_usage_customread += sizeof(request);
   req->client_idx = client_idx;
   req->total_length = to_read;
   req->read_amount = read_amount;

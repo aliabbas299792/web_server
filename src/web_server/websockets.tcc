@@ -65,15 +65,18 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
 
       if(frame_contents.size() > 0){
         //this is where you'd deal with websocket connections
-        std::string str = "Hello from the server.\n";
+        // std::string str = "Hello from the server.\n";
 
-        for(int i = 0; i < 1024*1024*25; i++){
-          str+="A";
-        }
+        // for(int i = 0; i < 1024*1024*25; i++){
+        //   str+="A";
+        // }
+        // auto str = std::string(frame_contents.data()) + " is what you said";
 
-        auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-        std::vector<char> buffer = std::move(frame_contents);
-        websocket_write(ws_client_idx, std::move(data));
+        std::cout << frame_contents.data() << " : " << frame_contents.size() << "\n";
+
+        // auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+        // std::vector<char> buffer = std::move(frame_contents);
+        // websocket_write(ws_client_idx, std::move(data));
 
         //we're going to close immediately after, so make sure the program knows there is this write op happening
         // closed = close_ws_connection_req(ws_client_idx);
@@ -249,8 +252,10 @@ std::pair<int, std::vector<char>> web_server<T>::decode_websocket_frame(std::vec
   const std::vector<char> masking_key{ data[2+offset], data[3+offset], data[4+offset], data[5+offset] };
 
   for(int i = 6+offset; i < data.size(); i++){
-    data[i] = data_ptr[i] ^ masking_key[(i - (6 + offset)) % 4];
+    data[i-(6+offset)] = data_ptr[i] ^ masking_key[(i - (6 + offset)) % 4];
   }
+
+  data.resize(data.size() - (6+offset));
 
   if(opcode == 0x9) return {2, data}; //the ping opcode
   if(!fin) return {-2, data}; //fin bit not set, so put this in a pending larger buffer of decoded data

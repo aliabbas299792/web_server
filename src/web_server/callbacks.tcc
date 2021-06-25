@@ -27,8 +27,8 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
   // std::cout << "event cb\n";
   
-  // auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size());//, std::move(data));
+  auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
+  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
 }
 
 template<server_type T>
@@ -87,9 +87,12 @@ void read_cb(int client_idx, char *buffer, unsigned int length, server<T> *tcp_s
       )
     {
       basic_web_server->send_file_request(client_idx, "public/404.html", false, 400); //sends 404 request, should be cached if possible
+    }else if(basic_web_server->active_websocket_connections_client_idxs.count(client_idx)){ // if it's a websocket
+      tcp_server->read_connection(client_idx); // read from the socket immediately
     }
   } else if(basic_web_server->active_websocket_connections_client_idxs.count(client_idx)) { //this bit should be just websocket frames, and we only want to hear from active websockets, not closing ones
     basic_web_server->websocket_process_read_cb(client_idx, buffer, length); //this is the main websocket callback, deals with receiving messages, and sending them too if it needs/wants to
+    tcp_server->read_connection(client_idx); // read from the socket immediately
   }else{
     basic_web_server->close_connection(client_idx);
   }
@@ -99,10 +102,6 @@ template<server_type T>
 void write_cb(int client_idx, server<T> *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
 
-  if(basic_web_server->websocket_process_write_cb(client_idx)){ 
-    //if this is a websocket that is in the process of closing, it will let it close and then exit the function, otherwise we read from the function
-    tcp_server->read_connection(client_idx);
-  }else{
+  if(!basic_web_server->websocket_process_write_cb(client_idx)) //if this is a websocket that is in the process of closing, it will let it close and then exit the function, otherwise we read from the function
     basic_web_server->close_connection(client_idx); //for web requests you close the connection right after
-  }
 }
