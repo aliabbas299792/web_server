@@ -30,6 +30,12 @@ int tls_recv_helper(std::unordered_map<int, std::vector<char>> *recv_data, serve
 int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx);
 
+extern uint64_t mem_usage_event;
+extern uint64_t mem_usage_read;
+extern uint64_t mem_usage_write;
+extern uint64_t mem_usage_customread;
+extern uint64_t mem_usage_accept;
+
 template<server_type T>
 using accept_callback = void (*)(ACCEPT_CB_PARAMS);
 
@@ -86,6 +92,7 @@ struct write_data { //this is closer to 3 objects in 1
 
   write_data(multi_write *multi_write_data) : multi_write_data(multi_write_data) {}
   multi_write *multi_write_data = nullptr; //if not null then buff should be empty, and data should be in the multi_write pointer
+  
   ~write_data(){
     if(multi_write_data){
       multi_write_data->uses--;
@@ -118,6 +125,7 @@ struct client_base {
   int sockfd{};
   std::queue<write_data> send_data{};
 
+  bool read_req_active = false;
   int num_write_reqs = 0; // if this is non zero, then do not proceed with the close callback, wait for other requests to finish
 };
 
@@ -224,16 +232,30 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
 
     template<typename U>
     void broadcast_message(U begin, U end, int num_clients){
-      // if(num_clients > 0){
-      //   auto data = new multi_write(std::move(buff), num_clients);
 
-      //   for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
-      //     auto &client = clients[(int)*client_idx_ptr];
-      //     client.send_data.emplace(data);
-      //     if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
-      //       add_write_req(*client_idx_ptr, event_type::WRITE, &(data->buff[0]), data->buff.size());
-      //   }
-      // }
+      // std::cout << num_clients << "\n";
+      if(num_clients > 0){
+        // std::vector<unsigned char> data2{ 130, 16, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 46, 46, 46, 46, 10};
+        // std::vector<char> buff{};
+        // buff.insert(buff.begin(), data2.begin(), data2.end());
+
+        // auto data = new multi_write(std::move(buff), num_clients);
+
+        // for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
+        //   auto &client = clients[(int)*client_idx_ptr];
+        //   client.send_data.emplace(data);
+        //   if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
+        //     add_write_req(*client_idx_ptr, event_type::WRITE, &(data->buff[0]), data->buff.size());
+        // }
+
+        for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
+          std::vector<unsigned char> data2{ 130, 16, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 46, 46, 46, 46, 10};
+          std::vector<char> buff{};
+          buff.insert(buff.begin(), data2.begin(), data2.end());
+          
+          write_connection(*client_idx_ptr, std::move(buff));
+        }
+      }
     }
 
     template<typename U>

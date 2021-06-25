@@ -138,8 +138,10 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
         //above will either add in a read request, or get whatever is left in the local buffer (as we might have got the HTTP request with the handshake)
 
         client.recv_data = std::vector<char>{};
-        if(amount_read > -1)
+        if(amount_read > -1){
+          clients[req->client_idx].read_req_active = false;
           if(read_cb != nullptr) read_cb(req->client_idx, &buffer[0], amount_read, this, custom_obj);
+        }
       }
       break;
     }
@@ -195,6 +197,7 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       if(total_read == 0) add_read_req(req->client_idx, event_type::READ); //total_read of 0 implies that data must be read into the recv_data buffer
       
       if(total_read > 0){
+        clients[req->client_idx].read_req_active = false;
         if(read_cb != nullptr) read_cb(req->client_idx, &buffer[0], total_read, this, custom_obj);
         if(!client.recv_data.size())
           client.recv_data = {};

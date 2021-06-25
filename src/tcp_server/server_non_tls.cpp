@@ -96,6 +96,7 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
       break;
     }
     case event_type::READ: {
+      clients[req->client_idx].read_req_active = false;
       if(read_cb != nullptr) read_cb(req->client_idx, &(req->read_data[0]), cqe_res, this, custom_obj);
       break;
     }
