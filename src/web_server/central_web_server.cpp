@@ -1,9 +1,10 @@
 #include "../header/web_server/web_server.h"
+#include <thread>
 
 std::unordered_map<std::string, std::string> central_web_server::config_data_map{};
+bool central_web_server::end_server_execution = false;
 
-void central_web_server::tls_thread_server_runner(){
-  tls_web_server basic_web_server;
+void central_web_server::tls_thread_server_runner(tls_web_server &basic_web_server){
   tls_server tcp_server(
     std::stoi(config_data_map["TLS_PORT"]),
     config_data_map["FULLCHAIN"],
@@ -19,27 +20,10 @@ void central_web_server::tls_thread_server_runner(){
 
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
   
-  std::thread server_thread([&tcp_server](){
-    tcp_server.start();
-  });
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-  while(true){
-    if(tcp_server.is_active){ // only notify it if the server is active
-      tcp_server.notify_event();
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }else{
-      break; // otherwise the server has been killed, so join and end this thread
-    }
-  }
-
-  server_thread.join();
+  tcp_server.start();
 }
 
-void central_web_server::plain_thread_server_runner(){
-  plain_web_server basic_web_server;
-
+void central_web_server::plain_thread_server_runner(plain_web_server &basic_web_server){
   plain_server tcp_server(
     std::stoi(config_data_map["PORT"]),
     &basic_web_server,
@@ -53,22 +37,7 @@ void central_web_server::plain_thread_server_runner(){
   
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
   
-  std::thread server_thread([&tcp_server](){
-    tcp_server.start();
-  });
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-  while(true){
-    if(tcp_server.is_active){ // only notify it if the server is active
-      tcp_server.notify_event();
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }else{
-      break; // otherwise the server has been killed, so join and end this thread
-    }
-  }
-
-  server_thread.join();
+  tcp_server.start();
 }
 
 void central_web_server::start_server(const char *config_file_path){
@@ -130,18 +99,41 @@ void central_web_server::run(){
 
   std::cout << "Using " << num_threads << " threads\n";
 
-  for(int i = 0; i < num_threads; i++){
-    if(config_data_map["TLS"] == "yes")
-      thread_container.push_back(std::thread(tls_thread_server_runner));
-    else
-      thread_container.push_back(std::thread(plain_thread_server_runner));
+  const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
+  auto str = "Hello world";
+  auto ws_data = make_ws_frame(str, websocket_non_control_opcodes::text_frame);
+
+  if(config_data_map["TLS"] == "yes"){
+    for(int i = 0; i < num_threads; i++)
+      tls_thread_container.emplace_back();
+    
+    while(!end_server_execution){
+      for(auto &data : tls_thread_container)
+        data.server.post_message_to_server_thread(message_type::websocket_broadcast, ws_data.data(), ws_data.size());
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+  }else{
+    for(int i = 0; i < num_threads; i++)
+      plain_thread_container.emplace_back();
+    
+    while(!end_server_execution){
+      for(auto &data : plain_thread_container)
+        data.server.post_message_to_server_thread(message_type::websocket_broadcast, ws_data.data(), ws_data.size());
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
   }
 
-  for(auto &thread : thread_container) // wait for all threads to exit before exiting the program
-    thread.join();
+  // wait for all threads to exit before exiting the program
+  for(auto &thread_data : tls_thread_container)
+    thread_data.thread.join();
+  for(auto &thread_data : plain_thread_container)
+    thread_data.thread.join();
 }
 
 void central_web_server::kill_server(){
+  end_server_execution = true;
   server<server_type::TLS>::kill_all_servers(); // kills all TLS servers
   server<server_type::NON_TLS>::kill_all_servers(); // kills all non TLS servers
   // this will mean the run() function will exit

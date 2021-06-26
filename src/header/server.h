@@ -57,7 +57,7 @@ struct request {
   // fields used for write requests
   size_t written{}; //how much written so far
   size_t total_length{}; //how much data is in the request, in bytes
-  char *buffer = nullptr;
+  const char *buffer = nullptr;
   bool is_broadcast = false; // by default isn't a broadcast
 
   // fields used for read requests
@@ -80,8 +80,8 @@ struct write_data { //this is closer to 3 objects in 1
   write_data(std::vector<char> &&buff) : buff(buff) {}
   std::vector<char> buff;
 
-  write_data(char *buff, size_t length) : ptr_buff(buff), total_length(length) {}
-  char *ptr_buff = nullptr; //in the case you only want to write a char* ptr - this basically trusts that you won't invalidate the pointer
+  write_data(const char *buff, size_t length) : ptr_buff(buff), total_length(length) {}
+  const char *ptr_buff = nullptr; //in the case you only want to write a char* ptr - this basically trusts that you won't invalidate the pointer
   size_t total_length{}; //used in conjunction with the above
 
   write_data(multi_write *multi_write_data) : multi_write_data(multi_write_data) {}
@@ -98,8 +98,8 @@ struct write_data { //this is closer to 3 objects in 1
   }
 
   struct ptr_and_size {
-    ptr_and_size(char *buff, size_t length) : buff(buff), length(length) {}
-    char *buff = nullptr;
+    ptr_and_size(const char *buff, size_t length) : buff(buff), length(length) {}
+    const char *buff = nullptr;
     size_t length{};
   };
   
@@ -157,7 +157,7 @@ class server_base {
     void add_tcp_accept_req();
 
     //need it protected rather than private, since need to access from children
-    int add_write_req(int client_idx, event_type event, char *buffer, unsigned int length); //this is for the case you want to write a buffer rather than a vector
+    int add_write_req(int client_idx, event_type event, const char *buffer, unsigned int length); //this is for the case you want to write a buffer rather than a vector
     //used internally for sending messages
     int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
 
@@ -239,7 +239,7 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     }
 
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients, char *buff, size_t length){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
+    void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
       if(num_clients > 0){
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
           auto &client = clients[(int)*client_idx_ptr];
@@ -304,7 +304,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     }
 
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients, char *buff, size_t length){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
+    void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
       if(num_clients > 0){
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
           auto &client = clients[(int)*client_idx_ptr];

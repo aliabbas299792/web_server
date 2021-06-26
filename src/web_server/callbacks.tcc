@@ -23,12 +23,10 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
   const auto basic_web_server = (web_server<T>*)custom_obj;
   const auto &client_idxs = basic_web_server->active_websocket_connections_client_idxs;
 
-  std::string str = "hello world....\n";
+  auto data = basic_web_server->get_from_program_queue();
+  auto ws_channel_idx = data.additional_info; // we're using additional_info for the websocket channel
 
-  // std::cout << "event cb\n";
-  
-  auto data = basic_web_server->make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), std::move(data));
+  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length);
 }
 
 template<server_type T>

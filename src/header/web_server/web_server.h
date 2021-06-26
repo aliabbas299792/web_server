@@ -20,6 +20,9 @@ using plain_server = server<server_type::NON_TLS>;
 using tls_web_server = web_server<server_type::TLS>;
 using plain_web_server = web_server<server_type::NON_TLS>;
 
+struct tls_server_data;
+struct plain_server_data;
+
 struct receiving_data_info{
   receiving_data_info(int length = -1, std::vector<char> buffer = {}) : length(length), buffer(buffer) {}
   int length = -1;
@@ -36,7 +39,7 @@ struct ws_client {
 };
 
 struct message_post_data {
-  message_post_data(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info) : msg_type(msg_type), buff_ptr(buff_ptr), length(length), additional_info(additional_info) {}
+  message_post_data(message_type msg_type = message_type::websocket_broadcast, const char *buff_ptr = nullptr, size_t length = 0, uint64_t additional_info = 0) : msg_type(msg_type), buff_ptr(buff_ptr), length(length), additional_info(additional_info) {}
   message_type msg_type;
   const char *buff_ptr;
   size_t length;
@@ -90,7 +93,9 @@ class web_server{
 
   int central_eventfd{};
 public:
-  std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
+  static std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
+  
+  web_server(web_server &&server) = default;
   web_server() {};
 
   void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
@@ -107,16 +112,30 @@ public:
     this->central_eventfd = efd; //sets the program efd
   }
 
-  void post_message_to_server_thread(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info){ //called from the program thread, to notify the server thread
+  void post_message_to_server_thread(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info = 0){ //called from the program thread, to notify the server thread
+    if(!tcp_server) return;
     to_server_queue.emplace(msg_type, buff_ptr, length, additional_info);
     tcp_server->notify_event();
   }
 
-  void post_message_to_program(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info){
+  void post_message_to_program(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info = 0){
+    if(!tcp_server) return;
     to_program_queue.emplace(msg_type, buff_ptr, length, additional_info);
     eventfd_write(central_eventfd, 1); //notify the program thread
   }
   
+  message_post_data get_from_program_queue(){ // so called from main server thread
+    message_post_data data{};
+    to_server_queue.try_dequeue(data);
+    return data;
+  }
+
+  message_post_data get_from_server_queue(){ // so called from main program thread
+    message_post_data data{};
+    to_program_queue.try_dequeue(data);
+    return data;
+  }
+
   //
   ////http public methods
   //
@@ -151,16 +170,24 @@ public:
 class central_web_server {
 private:
   std::unordered_map<char*, int> buff_ptr_to_uses_map{};
-  std::vector<std::thread> thread_container{};
+
+  std::vector<tls_server_data> tls_thread_container{};
+  std::vector<plain_server_data> plain_thread_container{};
+  
+  friend tls_server_data;
+  friend plain_server_data;
 
   static std::unordered_map<std::string, std::string> config_data_map;
 
-  static void tls_thread_server_runner();
-  static void plain_thread_server_runner();
+  static void tls_thread_server_runner(tls_web_server &basic_web_server);
+  static void plain_thread_server_runner(plain_web_server &basic_web_server);
 
   central_web_server() {};
 
   void run();
+  static bool end_server_execution;
+
+  int event_fd = eventfd(0, 0);
 public:
   void start_server(const char *config_file_path);
 
@@ -173,6 +200,26 @@ public:
   }
   
   void kill_server();
+};
+
+struct tls_server_data {
+  std::thread thread{};
+  tls_web_server server{};
+  tls_server_data(){
+    server.set_central_eventfd(central_web_server::instance().event_fd); // to allow for communication between the threads (on data available, it'll write to that fd)
+    thread = std::thread(central_web_server::tls_thread_server_runner, std::ref(server));
+  }
+  tls_server_data(tls_server_data &&data) = default;
+};
+
+struct plain_server_data {
+  std::thread thread{};
+  plain_web_server server{};
+  plain_server_data(){
+    server.set_central_eventfd(central_web_server::instance().event_fd); // to allow for communication between the threads (on data available, it'll write to that fd)
+    thread = std::thread(central_web_server::plain_thread_server_runner, std::ref(server));
+  }
+  plain_server_data(plain_server_data &&data) = default;
 };
 
 #include "../../web_server/web_server.tcc"

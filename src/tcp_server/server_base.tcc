@@ -237,7 +237,7 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
 }
 
 template<server_type T>
-int server_base<T>::add_write_req(int client_idx, event_type event, char *buffer, unsigned int length) {
+int server_base<T>::add_write_req(int client_idx, event_type event, const char *buffer, unsigned int length) {
   request *req = new request();
   req->client_idx = client_idx;
   req->total_length = length;
