@@ -48,6 +48,12 @@ using event_callback = void(*)(EVENT_CB_PARAMS);
 template<server_type T>
 using custom_read_callback = void(*)(CUSTOM_READ_CB_PARAMS);
 
+// extern uint64_t mem_usage_event;
+// extern uint64_t mem_usage_read;
+// extern uint64_t mem_usage_write;
+// extern uint64_t mem_usage_customread;
+// extern uint64_t mem_usage_accept;
+
 struct request {
   // fields used for any request
   event_type event;
@@ -90,10 +96,8 @@ struct write_data { //this is closer to 3 objects in 1
   ~write_data(){
     if(multi_write_data){
       multi_write_data->uses--;
-      if(multi_write_data->uses == 0){
-        // std::cout << "deleting...\n";
+      if(multi_write_data->uses == 0)
         delete multi_write_data;
-      }
     }
   }
 

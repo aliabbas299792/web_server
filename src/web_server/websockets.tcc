@@ -72,7 +72,11 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
         // }
         // auto str = std::string(frame_contents.data()) + " is what you said";
 
-        std::cout << frame_contents.data() << " : " << frame_contents.size() << "\n";
+        // std::cout << "ws clients size: " << websocket_clients.size() << " # tcp clients size: " << tcp_clients.size() << "\n";
+
+        // std::cout << client_data.receiving_data.length << " / " << client_data.receiving_data.buffer.capacity() << " : " << client_data.websocket_frames.capacity() << "\n";
+
+        std::cout << " => " << frame_contents.size() << "\n";
 
         // auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
         // std::vector<char> buffer = std::move(frame_contents);

@@ -124,8 +124,8 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
 }
 
 template<server_type T>
-void web_server<T>::set_tcp_server(server<T> *tcp_server){
-  this->tcp_server = tcp_server;
+void web_server<T>::set_tcp_server(server<T> *server){
+  tcp_server = server;
   tcp_server->custom_read_req(web_cache.inotify_fd, sizeof(inotify_event)); //always read from inotify_fd - we only read size of event, since we monitor files
 }
 

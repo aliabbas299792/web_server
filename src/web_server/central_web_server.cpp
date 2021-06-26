@@ -104,8 +104,7 @@ void central_web_server::run(){
   auto ws_data = make_ws_frame(str, websocket_non_control_opcodes::text_frame);
 
   if(config_data_map["TLS"] == "yes"){
-    for(int i = 0; i < num_threads; i++)
-      tls_thread_container.emplace_back();
+    tls_thread_container.resize(num_threads);
     
     while(!end_server_execution){
       for(auto &data : tls_thread_container)
@@ -114,8 +113,7 @@ void central_web_server::run(){
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
   }else{
-    for(int i = 0; i < num_threads; i++)
-      plain_thread_container.emplace_back();
+    plain_thread_container.resize(num_threads);
     
     while(!end_server_execution){
       for(auto &data : plain_thread_container)
