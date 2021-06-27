@@ -129,6 +129,7 @@ void central_web_server::add_write_req(int fd, const char *buff_ptr, size_t size
   req->buff_ptr = buff_ptr;
   req->size = size;
   req->fd = fd;
+  req->event = central_web_server_event::WRITE;
 
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
   io_uring_prep_write(sqe, fd, buff_ptr, size, 0); //do not write at an offset
@@ -195,7 +196,7 @@ void central_web_server::run(int num_threads){
     if(cqe->res < 0){
       std::cerr << "CQE RES CENTRAL: " << cqe->res << std::endl;
       std::cerr << "ERRNO: " << errno << std::endl;
-      std::cerr << "io_uring_wait_cqe ret: " << ret << std::endl;
+      std::cerr << "io_uring_wait_cqe ret: " << int(ret) << std::endl;
       io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
       continue;
     }
