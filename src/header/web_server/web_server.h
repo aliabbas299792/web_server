@@ -20,8 +20,8 @@ using plain_server = server<server_type::NON_TLS>;
 using tls_web_server = web_server<server_type::TLS>;
 using plain_web_server = web_server<server_type::NON_TLS>;
 
-struct tls_server_data;
-struct plain_server_data;
+template<server_type T>
+struct server_data;
 
 struct receiving_data_info{
   receiving_data_info(int length = -1, std::vector<char> buffer = {}) : length(length), buffer(buffer) {}
@@ -170,21 +170,22 @@ public:
 class central_web_server {
 private:
   std::unordered_map<char*, int> buff_ptr_to_uses_map{};
-
-  std::vector<tls_server_data> tls_thread_container{};
-  std::vector<plain_server_data> plain_thread_container{};
   
-  friend tls_server_data;
-  friend plain_server_data;
+  template<server_type T>
+  friend struct server_data;
 
   static std::unordered_map<std::string, std::string> config_data_map;
 
-  static void tls_thread_server_runner(tls_web_server &basic_web_server);
-  static void plain_thread_server_runner(plain_web_server &basic_web_server);
+  template<server_type T>
+  static void thread_server_runner(web_server<T> &basic_web_server);
 
   central_web_server() {};
 
   void run();
+
+  template<server_type T>
+  void main_execution(int num_threads);
+
   static bool end_server_execution;
 
   int event_fd = eventfd(0, 0);
@@ -202,24 +203,15 @@ public:
   void kill_server();
 };
 
-struct tls_server_data {
+template<server_type T>
+struct server_data {
   std::thread thread{};
-  tls_web_server server{};
-  tls_server_data(){
+  web_server<T> server{};
+  server_data(){
     server.set_central_eventfd(central_web_server::instance().event_fd); // to allow for communication between the threads (on data available, it'll write to that fd)
-    thread = std::thread(central_web_server::tls_thread_server_runner, std::ref(server));
+    thread = std::thread(central_web_server::thread_server_runner<T>, std::ref(server));
   }
-  tls_server_data(tls_server_data &&data) = default;
-};
-
-struct plain_server_data {
-  std::thread thread{};
-  plain_web_server server{};
-  plain_server_data(){
-    server.set_central_eventfd(central_web_server::instance().event_fd); // to allow for communication between the threads (on data available, it'll write to that fd)
-    thread = std::thread(central_web_server::plain_thread_server_runner, std::ref(server));
-  }
-  plain_server_data(plain_server_data &&data) = default;
+  server_data(server_data &&data) = default;
 };
 
 #include "../../web_server/web_server.tcc"

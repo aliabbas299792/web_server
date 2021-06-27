@@ -4,7 +4,8 @@
 std::unordered_map<std::string, std::string> central_web_server::config_data_map{};
 bool central_web_server::end_server_execution = false;
 
-void central_web_server::tls_thread_server_runner(tls_web_server &basic_web_server){
+template<>
+void central_web_server::thread_server_runner(tls_web_server &basic_web_server){
   tls_server tcp_server(
     std::stoi(config_data_map["TLS_PORT"]),
     config_data_map["FULLCHAIN"],
@@ -23,7 +24,8 @@ void central_web_server::tls_thread_server_runner(tls_web_server &basic_web_serv
   tcp_server.start();
 }
 
-void central_web_server::plain_thread_server_runner(plain_web_server &basic_web_server){
+template<>
+void central_web_server::thread_server_runner(plain_web_server &basic_web_server){
   plain_server tcp_server(
     std::stoi(config_data_map["PORT"]),
     &basic_web_server,
@@ -91,43 +93,39 @@ void central_web_server::start_server(const char *config_file_path){
   this->run(); // run the program
 }
 
-void central_web_server::run(){
-  // the below is more like demo code to test out the multithreaded features
-
-  //done reading config
-  const auto num_threads = config_data_map.count("SERVER_THREADS") ? std::stoi(config_data_map["SERVER_THREADS"]) : 3; //by default uses 3 threads
-
+template<server_type T>
+void central_web_server::main_execution(int num_threads){
   std::cout << "Using " << num_threads << " threads\n";
 
   const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
   auto str = "Hello world";
   auto ws_data = make_ws_frame(str, websocket_non_control_opcodes::text_frame);
 
-  if(config_data_map["TLS"] == "yes"){
-    tls_thread_container.resize(num_threads);
-    
-    while(!end_server_execution){
-      for(auto &data : tls_thread_container)
-        data.server.post_message_to_server_thread(message_type::websocket_broadcast, ws_data.data(), ws_data.size());
+  std::vector<server_data<T>> thread_data_container{};
+  thread_data_container.resize(num_threads);
+  
+  while(!end_server_execution){
+    for(auto &data : thread_data_container)
+      data.server.post_message_to_server_thread(message_type::websocket_broadcast, ws_data.data(), ws_data.size());
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-  }else{
-    plain_thread_container.resize(num_threads);
-    
-    while(!end_server_execution){
-      for(auto &data : plain_thread_container)
-        data.server.post_message_to_server_thread(message_type::websocket_broadcast, ws_data.data(), ws_data.size());
-
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 
   // wait for all threads to exit before exiting the program
-  for(auto &thread_data : tls_thread_container)
+  for(auto &thread_data : thread_data_container)
     thread_data.thread.join();
-  for(auto &thread_data : plain_thread_container)
-    thread_data.thread.join();
+}
+
+void central_web_server::run(){
+  // the below is more like demo code to test out the multithreaded features
+
+  //done reading config
+  const auto num_threads = config_data_map.count("SERVER_THREADS") ? std::stoi(config_data_map["SERVER_THREADS"]) : 3; //by default uses 3 threads
+
+  if(config_data_map["TLS"] == "yes")
+    main_execution<server_type::TLS>(num_threads);
+  else
+    main_execution<server_type::NON_TLS>(num_threads);
 }
 
 void central_web_server::kill_server(){
