@@ -167,6 +167,20 @@ public:
   }
 };
 
+enum class central_web_server_event { EVENTFD, READ, WRITE };
+enum central_web_server_signals { KILL_SERVER = 1, WORKER_THREAD_QUEUE };
+
+struct central_web_server_req {
+  central_web_server_event event{};
+  std::vector<char> buff{};
+  
+  const char *buff_ptr{};
+  size_t size = -1; // if this is -1, buff_ptr is unused
+
+  size_t progress_bytes{}; // how much has been read/written
+  int fd{};
+};
+
 class central_web_server {
 private:
   std::unordered_map<char*, int> buff_ptr_to_uses_map{};
@@ -186,9 +200,18 @@ private:
   template<server_type T>
   void main_execution(int num_threads);
 
-  static bool end_server_execution;
-
   int event_fd = eventfd(0, 0);
+  
+  io_uring ring;
+
+  void add_event_read_req(int eventfd); // adds io_uring read request for the eventfd
+  void add_read_req(int fd, size_t size); // adds normal read request on io_uring
+  void add_write_req(int fd, const char *buff_ptr, size_t size); // adds normal write request on io_uring
+
+  // to finish off the requests
+  void read_req_continued(central_web_server_req *req, size_t last_read);
+  void write_req_continued(central_web_server_req *req, size_t written);
+
 public:
   void start_server(const char *config_file_path);
 
@@ -212,6 +235,35 @@ struct server_data {
     thread = std::thread(central_web_server::thread_server_runner<T>, std::ref(server));
   }
   server_data(server_data &&data) = default;
+};
+
+struct audio_info {
+  std::string name{};
+  std::string artists{}; // comma separated if multiple
+  std::string album{};
+  std::string album_art_path{};
+  std::string release_data{};
+};
+
+struct audio_data {
+  audio_info audio1_info{};
+  void *audio1_ptr{};
+
+  // if another piece of audio starts during this interval
+  // just include it here at the correct offset
+  audio_info audio2_info{};
+  void *audio2_ptr{};
+  float audio2_start_offset{};
+};
+
+class audio_broadcaster {
+    int central_eventfd{};
+  public:
+    moodycamel::ReaderWriterQueue<audio_data> to_program_queue{};
+
+    void audio_thread();
+
+    audio_broadcaster(int eventfd) : central_eventfd(eventfd) {}
 };
 
 #include "../../web_server/web_server.tcc"
