@@ -19,7 +19,7 @@ void central_web_server::thread_server_runner(tls_web_server &basic_web_server){
   ); //pass function pointers and a custom object
 
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
-  
+
   tcp_server.start();
 }
 
@@ -89,7 +89,15 @@ void central_web_server::start_server(const char *config_file_path){
     fatal_error("Please provide the PORT setting in the config file");
   }
 
-  this->run(); // run the program
+  // the below is more like demo code to test out the multithreaded features
+
+  //done reading config
+  const auto num_threads = config_data_map.count("SERVER_THREADS") ? std::stoi(config_data_map["SERVER_THREADS"]) : 3; //by default uses 3 threads
+
+  if(config_data_map["TLS"] == "yes")
+    run<server_type::TLS>(num_threads);
+  else
+    run<server_type::NON_TLS>(num_threads);
 }
 
 void central_web_server::add_event_read_req(int event_fd){
@@ -149,7 +157,7 @@ void central_web_server::write_req_continued(central_web_server_req *req, size_t
 }
 
 template<server_type T>
-void central_web_server::main_execution(int num_threads){
+void central_web_server::run(int num_threads){
   std::cout << "Using " << num_threads << " threads\n";
 
   const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
@@ -168,16 +176,26 @@ void central_web_server::main_execution(int num_threads){
   io_uring_queue_init(QUEUE_DEPTH, &ring, 0); //no flags, setup the queue
 
   io_uring_cqe *cqe;
+
+  add_event_read_req(event_fd); // need to read on this
   
   bool run_server = true;
 
   while(run_server){
     char ret = io_uring_wait_cqe(&ring, &cqe);
+
+    if(ret < 0){
+      io_uring_queue_exit(&ring);
+      close(event_fd);
+      break;
+    }
+
     auto *req = reinterpret_cast<central_web_server_req*>(cqe->user_data);
 
     if(cqe->res < 0){
       std::cerr << "CQE RES CENTRAL: " << cqe->res << std::endl;
       std::cerr << "ERRNO: " << errno << std::endl;
+      std::cerr << "io_uring_wait_cqe ret: " << ret << std::endl;
       io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
       continue;
     }
@@ -195,6 +213,7 @@ void central_web_server::main_execution(int num_threads){
             // broadcast this to the server threads
             break;
         }
+        add_event_read_req(event_fd); // rearm the read request
         break;
       }
       case central_web_server_event::READ:
@@ -219,29 +238,11 @@ void central_web_server::main_execution(int num_threads){
     io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
   }
 
+  // wait for all threads to exit before exiting the program
+  for(auto &thread_data : thread_data_container)
+    thread_data.thread.join();
 
-  // while(!end_server_execution){
-  //   for(auto &data : thread_data_container)
-  //     data.server.post_message_to_server_thread(message_type::websocket_broadcast, ws_data.data(), ws_data.size());
-
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  // }
-
-  // // wait for all threads to exit before exiting the program
-  // for(auto &thread_data : thread_data_container)
-  //   thread_data.thread.join();
-}
-
-void central_web_server::run(){
-  // the below is more like demo code to test out the multithreaded features
-
-  //done reading config
-  const auto num_threads = config_data_map.count("SERVER_THREADS") ? std::stoi(config_data_map["SERVER_THREADS"]) : 3; //by default uses 3 threads
-
-  if(config_data_map["TLS"] == "yes")
-    main_execution<server_type::TLS>(num_threads);
-  else
-    main_execution<server_type::NON_TLS>(num_threads);
+  audio_worker_thread.join();
 }
 
 void central_web_server::kill_server(){

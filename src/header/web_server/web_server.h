@@ -198,7 +198,7 @@ private:
   void run();
 
   template<server_type T>
-  void main_execution(int num_threads);
+  void run(int num_threads);
 
   int event_fd = eventfd(0, 0);
   
