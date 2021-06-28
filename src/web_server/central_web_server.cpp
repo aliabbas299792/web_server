@@ -1,6 +1,8 @@
 #include "../header/web_server/web_server.h"
 #include <thread>
 
+#include <sys/timerfd.h>
+
 std::unordered_map<std::string, std::string> central_web_server::config_data_map{};
 
 template<>
@@ -109,7 +111,7 @@ void central_web_server::add_event_read_req(int event_fd){
   
   io_uring_prep_read(sqe, event_fd, &(req->buff[0]), sizeof(uint64_t), 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
-  io_uring_submit(&ring); //submits the event
+  io_uring_submit(&ring);
 }
 
 void central_web_server::add_read_req(int fd, size_t size){
@@ -122,6 +124,18 @@ void central_web_server::add_read_req(int fd, size_t size){
   io_uring_prep_read(sqe, fd, &(req->buff[0]), size, 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
+}
+
+void central_web_server::add_timer_read_req(int timer_fd){
+  io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
+  auto *req = new central_web_server_req(); //enough space for the request struct
+  req->buff.resize(sizeof(uint64_t));
+  req->event = central_web_server_event::TIMERFD;
+  req->fd = timer_fd;
+  
+  io_uring_prep_read(sqe, timer_fd, &(req->buff[0]), sizeof(uint64_t), 0); //don't read at an offset
+  io_uring_sqe_set_data(sqe, req);
+  io_uring_submit(&ring);
 }
 
 void central_web_server::add_write_req(int fd, const char *buff_ptr, size_t size){
@@ -162,8 +176,6 @@ void central_web_server::run(int num_threads){
   std::cout << "Using " << num_threads << " threads\n";
 
   const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
-  auto str = "Hello world";
-  auto ws_data = make_ws_frame(str, websocket_non_control_opcodes::text_frame);
 
   std::vector<server_data<T>> thread_data_container{};
   thread_data_container.resize(num_threads);
@@ -181,6 +193,22 @@ void central_web_server::run(int num_threads){
   add_event_read_req(event_fd); // need to read on this
   
   bool run_server = true;
+
+  // timer stuff
+  // time is relative to process starting time
+  int timer_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+
+  // sets a 5s interval timer, starts with a delay of 5s
+  itimerspec timer_values;
+  timer_values.it_value.tv_sec = 1;
+  timer_values.it_value.tv_nsec = 0;
+  timer_values.it_interval.tv_sec = 1;
+  timer_values.it_interval.tv_nsec = 0;
+  timerfd_settime(timer_fd, 0, &timer_values, nullptr);
+  // arm the timer
+  add_timer_read_req(timer_fd);
+
+  int x = 0;
 
   while(run_server){
     char ret = io_uring_wait_cqe(&ring, &cqe);
@@ -204,17 +232,39 @@ void central_web_server::run(int num_threads){
     switch (req->event) {
       case central_web_server_event::EVENTFD: {
         const auto signal = *reinterpret_cast<uint64_t*>(req->buff.data());
+        std::cout << "signal " << signal << "\n";
         switch (signal) {
           case central_web_server_signals::KILL_SERVER:
             io_uring_queue_exit(&ring);
             close(event_fd);
             run_server = false;
             break;
-          case central_web_server_signals::WORKER_THREAD_QUEUE:
-            // broadcast this to the server threads
+          case central_web_server_signals::WORKER_THREAD_QUEUE: {
+           for(auto &thread_data : thread_data_container){
+             auto data = thread_data.server.get_from_server_queue();
+             store.free_item(data.item_idx);
+           }
             break;
+          }
         }
         add_event_read_req(event_fd); // rearm the read request
+        break;
+      }
+      case central_web_server_event::TIMERFD: {
+        std::cout << "timerfd " << x++ << "\n";
+        
+        auto str = "Hello world";
+        auto ws_data = make_ws_frame(str, websocket_non_control_opcodes::text_frame);
+
+        auto item_data = store.insert_item(std::move(ws_data), num_threads);
+
+        // you need to add something to deal with when a write request for broadcast is cancelled
+        // and then notify the central server that we don't need the buffer anymore
+
+        for(auto &thread_data : thread_data_container)
+          thread_data.server.post_message_to_server_thread(message_type::websocket_broadcast, reinterpret_cast<const char*>(item_data.buffer.ptr), item_data.buffer.size, item_data.idx);
+
+        add_timer_read_req(timer_fd); // rearm the timer
         break;
       }
       case central_web_server_event::READ:
@@ -238,6 +288,8 @@ void central_web_server::run(int num_threads){
     
     io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
   }
+  
+  close(timer_fd);
 
   // wait for all threads to exit before exiting the program
   for(auto &thread_data : thread_data_container)

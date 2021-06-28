@@ -26,7 +26,20 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
   auto data = basic_web_server->get_from_program_queue();
   auto ws_channel_idx = data.additional_info; // we're using additional_info for the websocket channel
 
-  tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length);
+  auto &data_vec = basic_web_server->broadcast_data;
+  if(data_vec.size() <= data.item_idx)
+    data_vec.resize(data.item_idx+1); // item_idx corresponds directly to the index
+  
+  if(client_idxs.size() > 0){
+    // final item is the number of clients that will broadcast this
+    data_vec[data.item_idx] = {data.buff_ptr, data.length, client_idxs.size()};
+
+    std::cout << "broadcasting message\n";
+
+    tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length);
+  }else{
+    basic_web_server->post_message_to_program(message_type::broadcast_finished, data.buff_ptr, data.length, data.item_idx);
+  }
 }
 
 template<server_type T>
@@ -97,8 +110,15 @@ void read_cb(int client_idx, char *buffer, unsigned int length, server<T> *tcp_s
 }
 
 template<server_type T>
-void write_cb(int client_idx, server<T> *tcp_server, void *custom_obj){
+void write_cb(int client_idx, int broadcast_item_idx, server<T> *tcp_server, void *custom_obj){
   const auto basic_web_server = (web_server<T>*)custom_obj;
+
+  if(broadcast_item_idx != -1){ // only a broadcast if this is not -1
+    auto &item = basic_web_server->broadcast_data[broadcast_item_idx];
+    auto &uses = item.uses;
+    if(--uses == 0)
+      basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_item_idx);
+  }
 
   if(!basic_web_server->websocket_process_write_cb(client_idx)) //if this is a websocket that is in the process of closing, it will let it close and then exit the function, otherwise we read from the function
     basic_web_server->close_connection(client_idx); //for web requests you close the connection right after

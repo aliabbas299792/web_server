@@ -101,6 +101,7 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
       break;
     }
     case event_type::WRITE: {
+      int broadcast_item_idx = -1; // only used for broadcast messages
       auto &client = clients[req->client_idx];
       client.num_write_reqs--; // decrement number of active write requests
       if(cqe_res + req->written < req->total_length && cqe_res > 0){ //if the current request isn't finished, continue writing
@@ -113,6 +114,10 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
         //a new client joins immediately after old one leaves, they might get the same clients
         //array index, but the ID's would be different
         auto *queue_ptr = &client.send_data;
+
+        if(queue_ptr->front().broadcast) //if it's broadcast, then custom_info must be the item_idx
+          broadcast_item_idx = queue_ptr->front().custom_info;
+
         queue_ptr->pop(); //remove the last processed item
         if(queue_ptr->size() > 0){ //if there's still some data in the queue, write it now
           auto &data_ref = queue_ptr->front();
@@ -120,7 +125,7 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
           add_write_req(req->client_idx, event_type::WRITE, write_data_stuff.buff, write_data_stuff.length); //adds a plain HTTP write request
         }
       }
-      if(write_cb != nullptr) write_cb(req->client_idx, this, custom_obj); //call the write callback
+      if(write_cb != nullptr) write_cb(req->client_idx, broadcast_item_idx, this, custom_obj); //call the write callback
       break;
     }
   }

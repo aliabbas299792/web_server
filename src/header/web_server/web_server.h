@@ -4,6 +4,7 @@
 #include "../server.h"
 #include "../utility.h"
 #include "../callbacks.h"
+#include "../data_store.h"
 
 #include "common_structs_enums.h"
 #include "cache.h"
@@ -23,6 +24,9 @@ using plain_web_server = web_server<server_type::NON_TLS>;
 template<server_type T>
 struct server_data;
 
+enum class central_web_server_event { EVENTFD, TIMERFD, READ, WRITE };
+enum central_web_server_signals { KILL_SERVER = 1, WORKER_THREAD_QUEUE };
+
 struct receiving_data_info{
   receiving_data_info(int length = -1, std::vector<char> buffer = {}) : length(length), buffer(buffer) {}
   int length = -1;
@@ -39,14 +43,20 @@ struct ws_client {
 };
 
 struct message_post_data {
-  message_post_data(message_type msg_type = message_type::websocket_broadcast, const char *buff_ptr = nullptr, size_t length = 0, uint64_t additional_info = 0) : msg_type(msg_type), buff_ptr(buff_ptr), length(length), additional_info(additional_info) {}
+  message_post_data(message_type msg_type = message_type::websocket_broadcast, const char *buff_ptr = nullptr, size_t length = 0, int item_idx = 0, uint64_t additional_info = 0) : msg_type(msg_type), buff_ptr(buff_ptr), length(length), item_idx(item_idx), additional_info(additional_info) {}
   message_type msg_type;
   const char *buff_ptr;
-  size_t length;
+  uint64_t length;
+  int item_idx;
   uint64_t additional_info;
 };
 
-
+struct broadcast_data_items {
+  const char* buff_ptr{};
+  size_t data_len{};
+  size_t uses{};
+  broadcast_data_items(const char* buff_ptr = nullptr, size_t data_len = -1, uint64_t uses = -1) : buff_ptr(buff_ptr), data_len(data_len), uses(uses) {}
+};
 
 template<server_type T>
 class web_server{
@@ -56,10 +66,6 @@ class web_server{
   server<T> *tcp_server = nullptr;
 
   std::string get_content_type(std::string filepath);
-
-  //
-  ////http stuff
-  //
 
   //
   ////websocket stuff////
@@ -111,17 +117,19 @@ public:
   void set_central_eventfd(int efd){
     this->central_eventfd = efd; //sets the program efd
   }
+  
+  std::vector<broadcast_data_items> broadcast_data{}; // data from any broadcasts sent from the program thread
 
-  void post_message_to_server_thread(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info = 0){ //called from the program thread, to notify the server thread
+  void post_message_to_server_thread(message_type msg_type, const char *buff_ptr, size_t length, int item_idx, uint64_t additional_info = -1){ //called from the program thread, to notify the server thread
     if(!tcp_server) return;
-    to_server_queue.emplace(msg_type, buff_ptr, length, additional_info);
+    to_server_queue.emplace(msg_type, buff_ptr, length, item_idx, additional_info);
     tcp_server->notify_event();
   }
 
-  void post_message_to_program(message_type msg_type, const char *buff_ptr, size_t length, uint64_t additional_info = 0){
+  void post_message_to_program(message_type msg_type, const char *buff_ptr, size_t length, int item_idx, uint64_t additional_info = -1){
     if(!tcp_server) return;
-    to_program_queue.emplace(msg_type, buff_ptr, length, additional_info);
-    eventfd_write(central_eventfd, 1); //notify the program thread
+    to_program_queue.emplace(msg_type, buff_ptr, length, item_idx, additional_info);
+    eventfd_write(central_eventfd, central_web_server_signals::WORKER_THREAD_QUEUE); //notify the program thread
   }
   
   message_post_data get_from_program_queue(){ // so called from main server thread
@@ -167,9 +175,6 @@ public:
   }
 };
 
-enum class central_web_server_event { EVENTFD, READ, WRITE };
-enum central_web_server_signals { KILL_SERVER = 1, WORKER_THREAD_QUEUE };
-
 struct central_web_server_req {
   central_web_server_event event{};
   std::vector<char> buff{};
@@ -204,7 +209,10 @@ private:
   
   io_uring ring;
 
+  data_store store{}; // the data store
+
   void add_event_read_req(int eventfd); // adds io_uring read request for the eventfd
+  void add_timer_read_req(int timerfd); // adds io_uring read request for the timerfd
   void add_read_req(int fd, size_t size); // adds normal read request on io_uring
   void add_write_req(int fd, const char *buff_ptr, size_t size); // adds normal write request on io_uring
 

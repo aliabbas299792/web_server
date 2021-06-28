@@ -83,14 +83,17 @@ struct multi_write {
 struct write_data { //this is closer to 3 objects in 1
   int last_written = -1;
 
-  write_data(std::vector<char> &&buff) : buff(buff) {}
+  uint64_t custom_info{};
+
+  write_data(std::vector<char> &&buff, uint64_t custom_info = 0) : buff(buff), custom_info(custom_info) {}
   std::vector<char> buff;
 
-  write_data(const char *buff, size_t length) : ptr_buff(buff), total_length(length) {}
+  write_data(const char *buff, size_t length, bool broadcast = false, uint64_t custom_info = 0) : ptr_buff(buff), total_length(length), broadcast(broadcast), custom_info(custom_info) {}
+  bool broadcast = false; // if true, then do something appropriate
   const char *ptr_buff = nullptr; //in the case you only want to write a char* ptr - this basically trusts that you won't invalidate the pointer
   size_t total_length{}; //used in conjunction with the above
 
-  write_data(multi_write *multi_write_data) : multi_write_data(multi_write_data) {}
+  write_data(multi_write *multi_write_data, uint64_t custom_info = 0) : multi_write_data(multi_write_data), custom_info(custom_info) {}
   multi_write *multi_write_data = nullptr; //if not null then buff should be empty, and data should be in the multi_write pointer
   
   ~write_data(){
@@ -243,11 +246,11 @@ class server<server_type::NON_TLS>: public server_base<server_type::NON_TLS> {
     }
 
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
+    void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length, uint64_t custom_info = 0){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
       if(num_clients > 0){
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
           auto &client = clients[(int)*client_idx_ptr];
-          client.send_data.emplace(buff, length);
+          client.send_data.emplace(buff, length, true, custom_info);
           if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
             add_write_req(*client_idx_ptr, event_type::WRITE, buff, length);
         }
@@ -308,11 +311,11 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
     }
 
     template<typename U>
-    void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
+    void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length, uint64_t custom_info = 0){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
       if(num_clients > 0){
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
           auto &client = clients[(int)*client_idx_ptr];
-          client.send_data.emplace(buff, length);
+          client.send_data.emplace(buff, length, true, custom_info);
           if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
             wolfSSL_write(client.ssl, buff, length);
         }
