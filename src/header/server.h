@@ -153,7 +153,6 @@ class server_base {
     event_callback<T> event_cb = nullptr;
     custom_read_callback<T> custom_read_cb = nullptr;
 
-    int thread_id = -1;
     io_uring ring;
     void *custom_obj; //it can be anything
 
@@ -191,7 +190,6 @@ class server_base {
     //needed to synchronize the multiple server threads
     static std::mutex init_mutex;
     static int shared_ring_fd; //pointer to a single io_uring ring fd, who's async backend is shared
-    static int current_max_id; //max id of thread
   public:
     server_base(int listen_port);
     void start(); //function to start the server

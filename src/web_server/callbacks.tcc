@@ -1,5 +1,4 @@
 #pragma once
-// #include "../header/web_server/web_server.h"
 #include "../header/callbacks.h"
 #include "../header/utility.h"
 
@@ -118,7 +117,7 @@ void write_cb(int client_idx, int broadcast_item_idx, server<T> *tcp_server, voi
   if(broadcast_item_idx != -1){ // only a broadcast if this is not -1
     auto &item = basic_web_server->broadcast_data[broadcast_item_idx];
     auto &uses = item.uses;
-    std::cout << uses << "\n";
+    // std::cout << uses << "\n";
     if(--uses == 0)
       basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_item_idx);
   }
