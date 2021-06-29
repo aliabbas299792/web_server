@@ -71,10 +71,10 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
   std::string header_first_line{};
   switch(response_code){
     case 200:
-      header_first_line = "HTTP/1.1 200 OK\r\n";
+      header_first_line = "HTTP/1.0 200 OK\r\n";
       break;
     default:
-      header_first_line = "HTTP/1.1 404 Not Found\r\n";
+      header_first_line = "HTTP/1.0 404 Not Found\r\n";
   }
 
   if(file_fd < 0)
@@ -91,7 +91,7 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
   if(accept_bytes){
     headers = header_first_line;
     headers += content_type;
-    headers += "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: ";
+    headers += "Accept-Ranges: bytes\r\nContent-Length: ";
     headers += content_length;
     headers += "\r\nRange: bytes=0-";
     headers += content_length;
@@ -101,8 +101,7 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
     headers += content_type;
     headers += "Content-Length: ";
   }
-  headers += content_length;
-  headers += "\r\nConnection:Keep-Alive\r\n";
+  headers += content_length + "\r\n";
 
   if(!cache_data.found)
     headers += "Cache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\nExpires: 0\r\n";
