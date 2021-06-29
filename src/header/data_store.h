@@ -78,6 +78,7 @@ public:
     if(--item.second == 0){
       data_vec[idx] = { {}, -1 };
       printf("finally i am free\n");
+      free_idxs.insert(idx);
     }
   }
 

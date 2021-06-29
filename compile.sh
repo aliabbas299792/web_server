@@ -2,6 +2,7 @@ SOURCE_FILES=$(find . -type d \( -path ./build -o -path ./src/vendor \) -prune -
 # above will go through all of the directories, except those specified, and find all .cpp, .h and .tcc files,
 # and make the output into a space separated string of paths
 cd src
+rm -rf server
 cmake \
   -DCMAKE_BUILD_TYPE=DEBUG \
   -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
@@ -12,6 +13,5 @@ cmake \
 cd ..
 cd build && make
 cp compile_commands.json .. # for clangd
-rm -rf server
 cp webserver ../server
 cd ..

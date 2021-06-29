@@ -36,7 +36,9 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
 
     std::cout << "broadcasting message\n";
 
-    tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length);
+    std::cout << "info: " << data.item_idx << " " << basic_web_server->broadcast_data[data.item_idx].uses << "\n";
+
+    tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length, data.item_idx);
   }else{
     basic_web_server->post_message_to_program(message_type::broadcast_finished, data.buff_ptr, data.length, data.item_idx);
   }
@@ -116,6 +118,7 @@ void write_cb(int client_idx, int broadcast_item_idx, server<T> *tcp_server, voi
   if(broadcast_item_idx != -1){ // only a broadcast if this is not -1
     auto &item = basic_web_server->broadcast_data[broadcast_item_idx];
     auto &uses = item.uses;
+    std::cout << uses << "\n";
     if(--uses == 0)
       basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_item_idx);
   }
