@@ -31,7 +31,7 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
   const auto basic_web_server = (web_server<T>*)custom_obj;
   const auto &client_idxs = basic_web_server->active_websocket_connections_client_idxs;
 
-  auto data = basic_web_server->get_from_program_queue();
+  auto data = basic_web_server->get_from_to_server_queue();
   auto ws_channel_idx = data.additional_info; // we're using additional_info for the websocket channel
 
   auto &data_vec = basic_web_server->broadcast_data;

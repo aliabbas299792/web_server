@@ -134,15 +134,15 @@ public:
     eventfd_write(central_communication_eventfd, thread_id + 1); //notify the program thread, sends thread_id + 1, since index of 0 can't be read
   }
   
-  message_post_data get_from_program_queue(){ // so called from main server thread
+  message_post_data get_from_to_program_queue(){ // so called from main program thread
     message_post_data data{};
-    to_server_queue.try_dequeue(data);
+    to_program_queue.try_dequeue(data);
     return data;
   }
 
-  message_post_data get_from_server_queue(){ // so called from main program thread
+  message_post_data get_from_to_server_queue(){ // so called from associated server thread
     message_post_data data{};
-    to_program_queue.try_dequeue(data);
+    to_server_queue.try_dequeue(data);
     return data;
   }
 

@@ -273,7 +273,7 @@ void central_web_server::run(int num_threads){
       case central_web_server_event::SERVER_THREAD_COMMUNICATION: {
         const auto thread_id = *reinterpret_cast<uint64_t*>(req->buff.data()) - 1; // index + 1 is sent since 0 can't be read, so -1 is the index/thread id
 
-        auto data = thread_data_container[thread_id].server.get_from_server_queue();
+        auto data = thread_data_container[thread_id].server.get_from_to_program_queue();
         store.free_item(data.item_idx);
 
         add_event_read_req(server_communication_eventfd, central_web_server_event::SERVER_THREAD_COMMUNICATION); // rearm the eventfd
