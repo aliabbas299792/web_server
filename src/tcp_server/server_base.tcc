@@ -29,18 +29,29 @@ void server_base<T>::start(){ //function to run the server
         req->event != event_type::CUSTOM_READ &&
         (cqe->res <= 0 || (req->client_idx > 0 && clients[req->client_idx].id != req->ID)))
       {
-        // CHECK THIS
+        std::cout << "disconnection hehe\n";
         if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
           req->buffer = nullptr; //done with the request buffer
-        if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){ // only do these if the client hasn't been replaced (I can't think of a situation where they would be replaced by this point, but just in case)
+        if(cqe->res <= 0 && clients[req->client_idx].id == req->ID){ // only do these if the client hasn't been replaced
           auto &client = clients[req->client_idx];
           if(req->event == event_type::WRITE || req->event == event_type::ACCEPT_WRITE)
             client.num_write_reqs--; // a write operation failed, decrement the number of active write operaitons for this client
+
+          int broadcast_additional_info = -1;
+          if(client.send_data.size() > 0 && client.send_data.front().broadcast)
+            broadcast_additional_info = client.send_data.front().custom_info;
+
+          if(broadcast_additional_info != -1)
+            std::cout << "broadcast_additional_info: " << broadcast_additional_info << "\n";
             
           if(client.num_write_reqs == 0){ // only if no write operations are active, close the connection
+            if(close_cb != nullptr) close_cb(req->client_idx, broadcast_additional_info, static_cast<server<T>*>(this), custom_obj);
             static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
-            if(close_cb != nullptr) close_cb(req->client_idx, static_cast<server<T>*>(this), custom_obj);
+          }else{
+            std::cout << "special case disconnection second: " << client.num_write_reqs << " ## " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
           }
+        }else{
+          std::cout << "special case disconnection: " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
         }
       }else if(req->event == event_type::EVENTFD) {
         if(*reinterpret_cast<uint64_t*>(req->read_data.data()) < 10){

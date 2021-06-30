@@ -9,11 +9,11 @@ enum server_signals { KILL = 1 };
 enum class server_type { TLS, NON_TLS };
 
 //I don't want to type out the parameters twice, so I don't
-#define ACCEPT_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
-#define CLOSE_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
-#define READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj
-#define WRITE_CB_PARAMS int client_idx, int broadcast_item_idx, server<T> *tcp_server, void *custom_obj
-#define EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj
+#define      ACCEPT_CB_PARAMS int client_idx, server<T> *tcp_server, void *custom_obj
+#define       CLOSE_CB_PARAMS int client_idx, int broadcast_additional_info, server<T> *tcp_server, void *custom_obj
+#define        READ_CB_PARAMS int client_idx, char* buffer, unsigned int length, server<T> *tcp_server, void *custom_obj
+#define       WRITE_CB_PARAMS int client_idx, int broadcast_additional_info, server<T> *tcp_server, void *custom_obj
+#define       EVENT_CB_PARAMS server<T> *tcp_server, void *custom_obj
 #define CUSTOM_READ_CB_PARAMS int client_idx, int fd, std::vector<char> &&buff, server<T> *tcp_server, void *custom_obj
 
 constexpr int BACKLOG = 10; //max number of connections pending acceptance

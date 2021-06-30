@@ -155,7 +155,7 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       break;
     }
     case event_type::WRITE: { //used for generally writing over TLS
-      int broadcast_item_idx = -1; // only used for broadcast messages
+      int broadcast_additional_info = -1; // only used for broadcast messages
       auto &client = clients[req->client_idx];
       client.num_write_reqs--; // decrement number of active write requests
       if(client.send_data.size() > 0){ //ensure this connection is still active
@@ -166,10 +166,10 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
         int written = wolfSSL_write(client.ssl, write_data_stuff.buff, write_data_stuff.length);
         if(written > -1){ //if it's not negative, it's all been written, so this write call is done
           if(client.send_data.front().broadcast) //if it's broadcast, then custom_info must be the item_idx
-            broadcast_item_idx = client.send_data.front().custom_info;
+            broadcast_additional_info = client.send_data.front().custom_info;
 
           client.send_data.pop();
-          if(write_cb != nullptr) write_cb(req->client_idx, broadcast_item_idx, this, custom_obj);
+          if(write_cb != nullptr) write_cb(req->client_idx, broadcast_additional_info, this, custom_obj);
           if(client.send_data.size()){ //if the write queue isn't empty, then write that as well
             auto &data_ref = client.send_data.front();
             auto write_data_stuff = data_ref.get_ptr_and_size();

@@ -261,7 +261,7 @@ std::pair<int, std::vector<char>> web_server<T>::decode_websocket_frame(std::vec
 
   data.resize(data.size() - (6+offset));
 
-  if(opcode == 0x9) return {2, data}; //the ping opcode
+  if(opcode == websocket_non_control_opcodes::ping) return {2, data}; //the ping opcode
   if(!fin) return {-2, data}; //fin bit not set, so put this in a pending larger buffer of decoded data
   
   return {1, data}; //succesfully decoded, and is the final frame

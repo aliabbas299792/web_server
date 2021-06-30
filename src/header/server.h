@@ -71,7 +71,7 @@ struct request {
   size_t read_amount{}; //how much has been read (in case of multi read requests)
   
   // extra
-  uint64_t custom_info{}; //any custom info you want to attach to the request
+  int64_t custom_info{}; //any custom info you want to attach to the request
 };
 
 struct multi_write {
@@ -83,7 +83,7 @@ struct multi_write {
 struct write_data { //this is closer to 3 objects in 1
   int last_written = -1;
 
-  uint64_t custom_info{};
+  int64_t custom_info{};
 
   write_data(std::vector<char> &&buff, uint64_t custom_info = 0) : buff(buff), custom_info(custom_info) {}
   std::vector<char> buff;
@@ -313,9 +313,11 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
       if(num_clients > 0){
         for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
           auto &client = clients[(int)*client_idx_ptr];
+          std::cout << "custom info in broadcast: " << custom_info << "\n";
           client.send_data.emplace(buff, length, true, custom_info);
           if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
             wolfSSL_write(client.ssl, buff, length);
+          std::cout << "send data size: " << client.send_data.size() << "\n";
         }
       }
     }
