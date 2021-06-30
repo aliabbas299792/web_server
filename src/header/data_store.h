@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_set>
 
+#include <iostream>
+
 // If using this across multiple threads, only call free_item/allocate_item on one thread,
 // and only those, after you're sure that (when deleting) the ptr you're using is definitely
 // done with now (i.e use eventfd and some struct to communicate on whether or not a thread is done)

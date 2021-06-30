@@ -3,7 +3,7 @@
 
 #include <vector> //for vectors
 
-enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE, EVENTFD, CUSTOM_READ };
+enum class event_type{ ACCEPT, ACCEPT_READ, ACCEPT_WRITE, READ, WRITE, EVENTFD, CUSTOM_READ, TIMERFD };
 // server signals < 10 are reserved, signals >= 10 are just for notification
 enum server_signals { KILL = 1 };
 enum class server_type { TLS, NON_TLS };

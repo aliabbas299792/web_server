@@ -23,7 +23,7 @@ void close_cb(int client_idx, int broadcast_additional_info, server<T> *tcp_serv
       basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_additional_info);
   }
 
-  basic_web_server->kill_tcp_client(client_idx);
+  basic_web_server->kill_client(client_idx);
 }
 
 template<server_type T>
@@ -42,7 +42,13 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
     // final item is the number of clients that will broadcast this
     data_vec[data.item_idx] = {data.buff_ptr, data.length, client_idxs.size()};
 
-    std::cout << "info: " << data.item_idx << " " << basic_web_server->broadcast_data[data.item_idx].uses << "\n";
+    std::cout << "item idx: " << data.item_idx << " ## uses: " << basic_web_server->broadcast_data[data.item_idx].uses << " ## users: ";
+
+    for(auto idx : client_idxs){
+      std::cout << idx << " ";
+    }
+
+    std::cout << "\n";
 
     tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length, data.item_idx);
   }else{
@@ -124,7 +130,7 @@ void write_cb(int client_idx, int broadcast_additional_info, server<T> *tcp_serv
   if(broadcast_additional_info != -1){ // only a broadcast if this is not -1
     auto &item = basic_web_server->broadcast_data[broadcast_additional_info];
     auto &uses = item.uses;
-    // std::cout << uses << "\n";
+    // std::cout << uses << " is num uses for idx " << broadcast_additional_info << "\n";
     if(--uses == 0)
       basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_additional_info);
   }

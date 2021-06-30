@@ -136,13 +136,21 @@ void web_server<T>::new_tcp_client(int client_idx){
 }
 
 template<server_type T>
-void web_server<T>::kill_tcp_client(int client_idx){
+void web_server<T>::kill_client(int client_idx){
   web_cache.finished_with_item(client_idx, tcp_clients[client_idx]);
   tcp_clients[client_idx].using_file = false;
+
+  int ws_client_idx = tcp_clients[client_idx].ws_client_idx;
+  all_websocket_connections.erase(ws_client_idx); //connection definitely closed now
+  
+  if(active_websocket_connections_client_idxs.count(client_idx)){ // i.e in the case this function is called with a currently open websocket
+    active_websocket_connections_client_idxs.erase(client_idx);
+    freed_indexes.insert(ws_client_idx);
+  }
 }
 
 template<server_type T>
 void web_server<T>::close_connection(int client_idx){
-  kill_tcp_client(client_idx); //destroy any data related to this request
+  kill_client(client_idx); //destroy any data related to this request
   tcp_server->close_connection(client_idx);
 }

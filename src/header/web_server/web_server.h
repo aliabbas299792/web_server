@@ -107,7 +107,7 @@ public:
   void set_tcp_server(server<T> *tcp_server); //required to be called to ensure pointer to TCP server is present
 
   void new_tcp_client(int client_idx);
-  void kill_tcp_client(int client_idx);
+  void kill_client(int client_idx);
 
   void close_connection(int client_idx);
 
@@ -131,8 +131,7 @@ public:
   void post_message_to_program(message_type msg_type, const char *buff_ptr, size_t length, int item_idx, uint64_t additional_info = -1){
     if(!tcp_server || thread_id == -1) return; // need this stuff set before posting any messages
     to_program_queue.emplace(msg_type, buff_ptr, length, item_idx, additional_info);
-    std::cout << "thread id: " << thread_id << "\n";
-    std::cout << eventfd_write(central_communication_eventfd, thread_id + 1) << "\n"; //notify the program thread, sends thread_id + 1, since index of 0 can't be read
+    eventfd_write(central_communication_eventfd, thread_id + 1); //notify the program thread, sends thread_id + 1, since index of 0 can't be read
   }
   
   message_post_data get_from_program_queue(){ // so called from main server thread

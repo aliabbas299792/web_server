@@ -130,10 +130,10 @@ int web_server<T>::new_ws_client(int client_idx){
     index = websocket_clients.size()-1;
   }
   
-  websocket_clients[index].client_idx = client_idx;
+  websocket_clients[index].client_idx = client_idx; // for the tcp layer sockets
 
-  all_websocket_connections.insert(index);
-  active_websocket_connections_client_idxs.insert(client_idx);
+  all_websocket_connections.insert(index); // stores ws_client_idx
+  active_websocket_connections_client_idxs.insert(client_idx); // uses the tcp layer socket idx because it's used early on to determine if a connection ws or not
 
   return index;
 }
@@ -207,7 +207,7 @@ template<server_type T>
 bool web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_already_closed){
   auto &client_data = websocket_clients[ws_client_idx];
   client_data.currently_writing++;
-  active_websocket_connections_client_idxs.erase(client_data.client_idx);
+  active_websocket_connections_client_idxs.erase(client_data.client_idx); // considered closed to outside observers now
   client_data.websocket_frames = {};
   if(!client_already_closed) {
     auto data = make_ws_frame("", websocket_non_control_opcodes::close_connection);
@@ -221,8 +221,7 @@ bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
   auto &client_data = websocket_clients[ws_client_idx];
   if(client_data.currently_writing == 1){
     if(client_data.close){
-      close_connection(client_data.client_idx);
-      all_websocket_connections.erase(ws_client_idx); //connection definitely closed by now
+      close_connection(client_data.client_idx); // we erase from all_websocket_connections in this call (in kill_client)
       freed_indexes.insert(ws_client_idx);
     }
   }else{
