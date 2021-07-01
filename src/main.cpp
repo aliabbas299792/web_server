@@ -10,7 +10,7 @@
 // uint64_t mem_usage_accept = 0;
 
 int main(){
-  signal(SIGINT, sigint_handler); //signal handler for when Ctrl+C is pressed
+  signal(SIGINT, utility::sigint_handler); //signal handler for when Ctrl+C is pressed
   signal(SIGPIPE, SIG_IGN); //signal handler for when a connection is closed while writing
 
   auto &webserver_instance = central_web_server::instance();

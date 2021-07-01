@@ -6,17 +6,6 @@
 
 #include <sys/inotify.h>
 
-template<server_type T>
-class web_server;
-
-template<server_type T>
-class server;
-
-using tls_server = server<server_type::TLS>;
-using plain_server = server<server_type::NON_TLS>;
-using tls_web_server = web_server<server_type::TLS>;
-using plain_web_server = web_server<server_type::NON_TLS>;
-
 using uchar = unsigned char;
 
 template<server_type T>
@@ -38,5 +27,6 @@ template<server_type T>
 void custom_read_cb(CUSTOM_READ_CB_PARAMS);
 
 #include "../web_server/callbacks.tcc" //template implementation file
+
 
 #endif

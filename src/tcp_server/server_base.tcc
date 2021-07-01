@@ -21,11 +21,12 @@ void server_base<T>::start(){ //function to run the server
     while(true){
       char ret = io_uring_wait_cqe(&ring, &cqe);
       if(ret < 0)
-        fatal_error("io_uring_wait_cqe");
+        utility::fatal_error("io_uring_wait_cqe");
       request *req = (request*)cqe->user_data;
 
       if(req->event != event_type::ACCEPT &&
-        req->event != event_type::EVENTFD &&
+        req->event != event_type::KILL &&
+        req->event != event_type::NOTIFICATION &&
         req->event != event_type::CUSTOM_READ &&
         req->event != event_type::TIMERFD &&
         (cqe->res <= 0 || (req->client_idx > 0 && clients[req->client_idx].id != req->ID)))
@@ -51,32 +52,19 @@ void server_base<T>::start(){ //function to run the server
               if(close_cb != nullptr) close_cb(req->client_idx, -1, static_cast<server<T>*>(this), custom_obj);
             
             static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
-          }else{
-            // std::cout << "special case disconnection second: " << client.num_write_reqs << " ## " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
           }
-        }else{
-          // std::cout << "special case disconnection: " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
         }
-      }else if(req->event == event_type::EVENTFD) {
-        if(*reinterpret_cast<uint64_t*>(req->read_data.data()) < 10){
-          event_read(server_signal_eventfd); // rearm the signal eventfd reading
-          uint64_t signal = *reinterpret_cast<uint64_t*>(req->read_data.data());
-          if(signal == server_signals::KILL){ // the only way to cleanly exit the loop, closes sockets and cleans up io_uring
-            io_uring_queue_exit(&ring);
-            close(listener_fd);
-            close(event_fd);
-            close(server_signal_eventfd);
-            
-            is_active = false; // received an exit signal, main server program will now exit, so it's now inactive
-            break;
-          }else{
-            // std::cout << "some other signal... " << signal << "\n";
-          }
-        }else{
-          event_read(event_fd); // rearm the eventfd reading
-          // std::cout << "normal eventfd signal\n";
-          if(event_cb != nullptr) event_cb(static_cast<server<T>*>(this), custom_obj);
-        }
+      }else if(req->event == event_type::KILL) {
+        io_uring_queue_exit(&ring);
+        close(listener_fd);
+        close(kill_efd);
+        close(notification_efd);
+        
+        is_active = false; // received an exit signal, main server program will now exit, so it's now inactive
+        break;
+      }else if(req->event == event_type::NOTIFICATION){
+        event_read(notification_efd, event_type::NOTIFICATION);
+        if(event_cb != nullptr) event_cb(static_cast<server<T>*>(this), custom_obj);
       }else if(req->event == event_type::CUSTOM_READ){
         if(req->read_data.size() == cqe->res + req->read_amount){
           if(custom_read_cb != nullptr) custom_read_cb(req->client_idx, (int)req->custom_info, std::move(req->read_data), static_cast<server<T>*>(this), custom_obj);
@@ -85,13 +73,10 @@ void server_base<T>::start(){ //function to run the server
           req = nullptr; //don't want it to be deleted yet
         }
       }else if(req->event == event_type::TIMERFD){
-        // std::cout << "gonna test: ";
         auto active_connections_copy = active_connections; // since we possibly remove elements during the loop, we need a copy
         for(auto client_idx : active_connections_copy){
           uint64_t buff{};
-          // std::cout << client_idx << " ";
           if(recv(clients[client_idx].sockfd, &buff, sizeof(uint64_t), MSG_PEEK | MSG_DONTWAIT) == 0){
-            // std::cout << "(disconnecting " << client_idx << ") | ";
             auto &client = clients[client_idx];
 
             while(client.send_data.size() > 0){ // might have had multiple broadcasts, so remove all the elements
@@ -109,9 +94,6 @@ void server_base<T>::start(){ //function to run the server
             static_cast<server<T>*>(this)->close_connection(client_idx); //making sure to remove any data relating to it as well
           }
         }
-        // if(active_connections.size() == 0)
-          // std::cout << "(no connections to test)";
-        // std::cout << "\n";
         
         add_timerfd_read_req();
       }else{
@@ -126,22 +108,22 @@ void server_base<T>::start(){ //function to run the server
 
 template<server_type T>
 void server_base<T>::notify_event(){
-  uint64_t sig = 10; // signal of 10 or more is just a notification
-  write(event_fd, &sig, sizeof(uint64_t));
+  uint64_t data = 1;
+  write(notification_efd, &data, sizeof(uint64_t));
 }
 
 template<server_type T>
 void server_base<T>::kill_server(){
-  uint64_t sig = 1; // signal of 1 is to kill the server
-  write(server_signal_eventfd, &sig, sizeof(uint64_t));
+  uint64_t data = 1;
+  write(kill_efd, &data, sizeof(uint64_t));
 }
 
 template<server_type T>
-void server_base<T>::event_read(int event_fd){
+void server_base<T>::event_read(int event_fd, event_type event){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   request *req = new request(); //enough space for the request struct
   req->read_data.resize(sizeof(uint64_t));
-  req->event = event_type::EVENTFD;
+  req->event = event;
   
   io_uring_prep_read(sqe, event_fd, &(req->read_data[0]), sizeof(uint64_t), 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
@@ -164,8 +146,8 @@ server_base<T>::server_base(int listen_port){
     io_uring_queue_init_params(QUEUE_DEPTH, &ring, &params);
   }
   
-  event_read(server_signal_eventfd); //sets a read request for the signal eventfd
-  event_read(event_fd); //sets a read request for the normal eventfd
+  event_read(kill_efd, event_type::KILL); //sets a read request for the signal eventfd
+  event_read(notification_efd, event_type::NOTIFICATION); //sets a read request for the normal eventfd
   
   listener_fd = setup_listener(listen_port); //setup the listener socket
   
@@ -220,17 +202,17 @@ int server_base<T>::setup_listener(int port) {
   hints.ai_flags = AI_PASSIVE; //use local IP
 
   if(getaddrinfo(NULL, std::to_string(port).c_str(), &hints, &server_info) != 0)
-    fatal_error("getaddrinfo");
+    utility::fatal_error("getaddrinfo");
 
   for(traverser = server_info; traverser != NULL; traverser = traverser->ai_next){
     if((listener_fd = socket(traverser->ai_family, traverser->ai_socktype, traverser->ai_protocol)) == -1) //ai_protocol may be usefulin the future I believe, only UDP/TCP right now, may
-      fatal_error("socket construction");
+      utility::fatal_error("socket construction");
 
     if(setsockopt(listener_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) //2nd param (SOL_SOCKET) is saying to do it at the socket protocol level, not TCP or anything else, just for the socket
-      fatal_error("setsockopt SO_REUSEADDR");
+      utility::fatal_error("setsockopt SO_REUSEADDR");
       
     if(setsockopt(listener_fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) == -1)
-      fatal_error("setsockopt SO_REUSEPORT");
+      utility::fatal_error("setsockopt SO_REUSEPORT");
 
     if(bind(listener_fd, traverser->ai_addr, traverser->ai_addrlen) == -1){ //try to bind the socket using the address data supplied, has internet address, address family and port in the data
       perror("bind");
@@ -243,10 +225,10 @@ int server_base<T>::setup_listener(int port) {
   freeaddrinfo(server_info); //free the server_info linked list
 
   if(traverser == NULL) //means we didn't break, so never got a socket made successfully
-    fatal_error("no socket made");
+    utility::fatal_error("no socket made");
 
   if(listen(listener_fd, BACKLOG) == -1)
-    fatal_error("listen");
+    utility::fatal_error("listen");
 
   return listener_fd;
 }

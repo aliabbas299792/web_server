@@ -175,12 +175,12 @@ class server_base {
     
     int setup_client(int client_idx);
 
-    void event_read(int event_fd); //will set a read request for the eventfd
+    void event_read(int event_fd, event_type event); //will set a read request for the eventfd
 
     bool ran_server = false;
   private:
-    int event_fd = eventfd(0, 0); //used to awaken this thread for some event
-    int server_signal_eventfd = eventfd(0, 0); //used to awaken this thread for some special events (i.e to be killed)
+    int notification_efd = eventfd(0, 0); //used to awaken this thread for some event
+    int kill_efd = eventfd(0, 0); //used to awaken this thread to be killed
 
     int listener_fd = 0;
 
@@ -320,7 +320,6 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
           client.send_data.emplace(buff, length, true, custom_info);
           if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
             wolfSSL_write(client.ssl, buff, length);
-          // std::cout << "send data size: " << client.send_data.size() << " || idx: " << custom_info << " ## client_idx: " << *client_idx_ptr << "\n";
         }
       }
     }

@@ -80,7 +80,7 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
   if(file_fd < 0)
     return false;
 
-  const auto file_size = get_file_size(file_fd);
+  const auto file_size = utility::get_file_size(file_fd);
 
   const auto content_length = std::to_string(file_size);
   const auto content_type = get_content_type(filepath);

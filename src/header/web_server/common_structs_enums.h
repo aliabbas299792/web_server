@@ -1,7 +1,16 @@
 #ifndef COMMON_STRUCTS_ENUMS
 #define COMMON_STRUCTS_ENUMS
 
+#include "../server_metadata.h"
 #include <string>
+
+template<server_type T>
+class web_server;
+
+using tls_server = server<server_type::TLS>;
+using plain_server = server<server_type::NON_TLS>;
+using tls_web_server = web_server<server_type::TLS>;
+using plain_web_server = web_server<server_type::NON_TLS>;
 
 enum websocket_non_control_opcodes {
   text_frame = 0x01,

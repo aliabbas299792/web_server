@@ -5,6 +5,8 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
+#include <string>
+
 template<server_type T>
 void accept_cb(int client_idx, server<T> *tcp_server, void *custom_obj){ //the accept callback
   const auto basic_web_server = (web_server<T>*)custom_obj;
@@ -18,7 +20,6 @@ void close_cb(int client_idx, int broadcast_additional_info, server<T> *tcp_serv
   if(broadcast_additional_info != -1){ // only a broadcast if this is not -1
     auto &item = basic_web_server->broadcast_data[broadcast_additional_info];
     auto &uses = item.uses;
-    // std::cout << uses << "\n";
     if(--uses == 0)
       basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_additional_info);
   }
@@ -41,14 +42,6 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
   if(client_idxs.size() > 0){
     // final item is the number of clients that will broadcast this
     data_vec[data.item_idx] = {data.buff_ptr, data.length, client_idxs.size()};
-
-    // std::cout << "item idx: " << data.item_idx << " ## uses: " << basic_web_server->broadcast_data[data.item_idx].uses << " ## users: ";
-
-    // for(auto idx : client_idxs){
-      // std::cout << idx << " ";
-    // }
-
-    // std::cout << "\n";
 
     tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length, data.item_idx);
   }else{
@@ -130,7 +123,6 @@ void write_cb(int client_idx, int broadcast_additional_info, server<T> *tcp_serv
   if(broadcast_additional_info != -1){ // only a broadcast if this is not -1
     auto &item = basic_web_server->broadcast_data[broadcast_additional_info];
     auto &uses = item.uses;
-    // std::cout << uses << " is num uses for idx " << broadcast_additional_info << "\n";
     if(--uses == 0)
       basic_web_server->post_message_to_program(message_type::broadcast_finished, item.buff_ptr, item.data_len, broadcast_additional_info);
   }

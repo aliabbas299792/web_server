@@ -38,7 +38,7 @@ int tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *
     //then copy that onto the provided buffer, and return the amount read
     //also then moves the residual data to the beginning properly, dealing with overlaps too
     std::memcpy(buff, &data[0], sz);
-    remove_first_n_elements(data, sz);
+    utility::remove_first_n_elements(data, sz);
     return sz;
   }else if(recvd_amount < sz){ //if there isn't enough data available for the full request (too little)
     if(accept) //we only send read requests via wolfSSL for the TLS negotiation bit

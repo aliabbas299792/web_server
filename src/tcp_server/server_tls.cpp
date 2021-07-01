@@ -74,15 +74,15 @@ server<server_type::TLS>::server(
 
   //create the wolfSSL context
   if((wolfssl_ctx = wolfSSL_CTX_new(wolfTLSv1_3_server_method())) == NULL)
-    fatal_error("Failed to create the WOLFSSL_CTX");
+    utility::fatal_error("Failed to create the WOLFSSL_CTX");
 
   //load the server certificate
   if(wolfSSL_CTX_use_certificate_chain_file(wolfssl_ctx, fullchain_location.c_str()) != SSL_SUCCESS)
-    fatal_error("Failed to load the certificate files");
+    utility::fatal_error("Failed to load the certificate files");
 
   //load the server's private key
   if(wolfSSL_CTX_use_PrivateKey_file(wolfssl_ctx, pkey_location.c_str(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
-    fatal_error("Failed to load the private key file");
+    utility::fatal_error("Failed to load the private key file");
   
   //set the wolfSSL callbacks
   wolfSSL_CTX_SetIORecv(wolfssl_ctx, tls_recv);

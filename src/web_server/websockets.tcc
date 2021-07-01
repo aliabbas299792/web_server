@@ -1,9 +1,6 @@
 #pragma once
 #include "../header/web_server/web_server.h"
 
-#include <openssl/sha.h>
-#include <openssl/evp.h>
-
 template<server_type T>
 void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx){
   const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
@@ -64,26 +61,13 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
       }
 
       if(frame_contents.size() > 0){
-        //this is where you'd deal with websocket connections
-        // std::string str = "Hello from the server.\n";
+        /******************************************/
+             // WEBSOCKET APPLICATION CODE //
+        /*****************************************/
 
-        // for(int i = 0; i < 1024*1024*25; i++){
-        //   str+="A";
-        // }
-        // auto str = std::string(frame_contents.data()) + " is what you said";
+        // put the code for interacting with websockets here
 
-        // std::cout << "ws clients size: " << websocket_clients.size() << " # tcp clients size: " << tcp_clients.size() << "\n";
-
-        // std::cout << client_data.receiving_data.length << " / " << client_data.receiving_data.buffer.capacity() << " : " << client_data.websocket_frames.capacity() << "\n";
-
-        std::cout << " => " << frame_contents.size() << "\n";
-
-        // auto data = make_ws_frame(str, websocket_non_control_opcodes::binary_frame); //echos back whatever you send
-        // std::vector<char> buffer = std::move(frame_contents);
-        // websocket_write(ws_client_idx, std::move(data));
-
-        //we're going to close immediately after, so make sure the program knows there is this write op happening
-        // closed = close_ws_connection_req(ws_client_idx);
+        /****************************************/
       }
 
       if(closed)
@@ -297,7 +281,7 @@ std::pair<int, std::vector<std::vector<char>>> web_server<T>::get_ws_frames(char
       frames.push_back(std::move(pending_item->buffer));
 
       char *remaining_data = nullptr;
-      remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
+      utility::remove_first_n_elements(buffer, (int)length, remaining_data, (int)required_length);
       buffer = remaining_data;
       client_data.receiving_data = {};
     
@@ -322,7 +306,7 @@ std::pair<int, std::vector<std::vector<char>>> web_server<T>::get_ws_frames(char
     if(remaining_length >= packet_length){
       frames.emplace(frames.end(), buffer, buffer + packet_length);
       char *remaining_data = nullptr;
-      remove_first_n_elements(buffer, (int)remaining_length, remaining_data, (int)packet_length);
+      utility::remove_first_n_elements(buffer, (int)remaining_length, remaining_data, (int)packet_length);
       buffer = remaining_data;
       remaining_length -= packet_length;
     }else{

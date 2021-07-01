@@ -14,18 +14,17 @@
 
 #include <thread>
 
+#include <openssl/sha.h>
+#include <openssl/evp.h>
+
 using uchar = unsigned char;
 
-using tls_server = server<server_type::TLS>;
-using plain_server = server<server_type::NON_TLS>;
-using tls_web_server = web_server<server_type::TLS>;
-using plain_web_server = web_server<server_type::NON_TLS>;
+using namespace web_cache;
 
 template<server_type T>
 struct server_data;
 
-enum class central_web_server_event { EVENTFD, TIMERFD, READ, WRITE, SERVER_THREAD_COMMUNICATION };
-enum central_web_server_signals { KILL_SERVER = 1, WORKER_THREAD_QUEUE };
+enum class central_web_server_event { TIMERFD, READ, WRITE, SERVER_THREAD_COMMUNICATION, KILL_SERVER };
 
 struct receiving_data_info{
   receiving_data_info(int length = -1, std::vector<char> buffer = {}) : length(length), buffer(buffer) {}
@@ -205,10 +204,11 @@ private:
   void run(int num_threads);
 
   int event_fd = eventfd(0, 0);
+  int kill_server_efd = eventfd(0, 0);
   
   io_uring ring;
 
-  data_store store{}; // the data store
+  data_store_namespace::data_store store{}; // the data store
 
   void add_event_read_req(int eventfd, central_web_server_event event, uint64_t custom_info = 0); // adds io_uring read request for the eventfd
   void add_timer_read_req(int timerfd); // adds io_uring read request for the timerfd
