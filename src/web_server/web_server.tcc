@@ -5,6 +5,8 @@ using namespace web_server;
 
 template<server_type T>
 bool basic_web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
+  const auto original_path = path;
+
   char *saveptr = nullptr;
   const char* token = strtok_r((char*)path.c_str(), "/", &saveptr);
   const char* subdir = token ? token : "";
@@ -13,7 +15,7 @@ bool basic_web_server<T>::get_process(std::string &path, bool accept_bytes, cons
     websocket_accept_read_cb(sec_websocket_key, path.substr(2), client_idx);
     return true;
   }else{
-    path = path == "" ? "public/index.html" : "public/"+path;
+    path = original_path == "" ? "public/index.html" : "public/"+original_path;
     
     if(send_file_request(client_idx, path, accept_bytes, 200))
       return true;
