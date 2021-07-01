@@ -62,6 +62,8 @@ std::string basic_web_server<T>::get_content_type(std::string filepath){
     return "Content-Type: image/jpeg\r\n";
   if(file_extension == "txt")
     return "Content-Type: text/plain\r\n";
+  if(file_extension == "wasm")
+    return "Content-Type: application/wasm\r\n";
   return "Content-Type: application/octet-stream\r\n";
 }
 
