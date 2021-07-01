@@ -42,13 +42,13 @@ void event_cb(server<T> *tcp_server, void *custom_obj){ //the accept callback
     // final item is the number of clients that will broadcast this
     data_vec[data.item_idx] = {data.buff_ptr, data.length, client_idxs.size()};
 
-    std::cout << "item idx: " << data.item_idx << " ## uses: " << basic_web_server->broadcast_data[data.item_idx].uses << " ## users: ";
+    // std::cout << "item idx: " << data.item_idx << " ## uses: " << basic_web_server->broadcast_data[data.item_idx].uses << " ## users: ";
 
-    for(auto idx : client_idxs){
-      std::cout << idx << " ";
-    }
+    // for(auto idx : client_idxs){
+      // std::cout << idx << " ";
+    // }
 
-    std::cout << "\n";
+    // std::cout << "\n";
 
     tcp_server->broadcast_message(client_idxs.cbegin(), client_idxs.cend(), client_idxs.size(), data.buff_ptr, data.length, data.item_idx);
   }else{

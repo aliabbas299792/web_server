@@ -88,8 +88,6 @@ server<server_type::TLS>::server(
   wolfSSL_CTX_SetIORecv(wolfssl_ctx, tls_recv);
   wolfSSL_CTX_SetIOSend(wolfssl_ctx, tls_send);
 
-  std::cout << "TLS will be used\n";
-
   std::unique_lock<std::mutex> access_lock(tls_server_vector_access);
   tls_servers.push_back(this); // basically so that anything which wants to manage all of the server at once, can
 }

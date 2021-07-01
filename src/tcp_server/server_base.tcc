@@ -11,7 +11,6 @@ int server_base<T>::shared_ring_fd = -1;
 
 template<server_type T>
 void server_base<T>::start(){ //function to run the server
-  std::cout << "Running server\n";
   if(!ran_server){
     ran_server = true;
 
@@ -53,10 +52,10 @@ void server_base<T>::start(){ //function to run the server
             
             static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
           }else{
-            std::cout << "special case disconnection second: " << client.num_write_reqs << " ## " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
+            // std::cout << "special case disconnection second: " << client.num_write_reqs << " ## " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
           }
         }else{
-          std::cout << "special case disconnection: " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
+          // std::cout << "special case disconnection: " << cqe->res << " || " << clients[req->client_idx].id << " || " << req->ID << "\n";
         }
       }else if(req->event == event_type::EVENTFD) {
         if(*reinterpret_cast<uint64_t*>(req->read_data.data()) < 10){
@@ -86,13 +85,13 @@ void server_base<T>::start(){ //function to run the server
           req = nullptr; //don't want it to be deleted yet
         }
       }else if(req->event == event_type::TIMERFD){
-        std::cout << "gonna test: ";
+        // std::cout << "gonna test: ";
         auto active_connections_copy = active_connections; // since we possibly remove elements during the loop, we need a copy
         for(auto client_idx : active_connections_copy){
           uint64_t buff{};
-          std::cout << client_idx << " ";
+          // std::cout << client_idx << " ";
           if(recv(clients[client_idx].sockfd, &buff, sizeof(uint64_t), MSG_PEEK | MSG_DONTWAIT) == 0){
-            std::cout << "(disconnecting " << client_idx << ") | ";
+            // std::cout << "(disconnecting " << client_idx << ") | ";
             auto &client = clients[client_idx];
 
             while(client.send_data.size() > 0){ // might have had multiple broadcasts, so remove all the elements
@@ -110,9 +109,9 @@ void server_base<T>::start(){ //function to run the server
             static_cast<server<T>*>(this)->close_connection(client_idx); //making sure to remove any data relating to it as well
           }
         }
-        if(active_connections.size() == 0)
-          std::cout << "(no connections to test)";
-        std::cout << "\n";
+        // if(active_connections.size() == 0)
+          // std::cout << "(no connections to test)";
+        // std::cout << "\n";
         
         add_timerfd_read_req();
       }else{

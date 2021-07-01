@@ -320,7 +320,7 @@ class server<server_type::TLS>: public server_base<server_type::TLS> {
           client.send_data.emplace(buff, length, true, custom_info);
           if(client.send_data.size() == 1) //only adds a write request in the case that the queue was empty before this
             wolfSSL_write(client.ssl, buff, length);
-          std::cout << "send data size: " << client.send_data.size() << " || idx: " << custom_info << " ## client_idx: " << *client_idx_ptr << "\n";
+          // std::cout << "send data size: " << client.send_data.size() << " || idx: " << custom_info << " ## client_idx: " << *client_idx_ptr << "\n";
         }
       }
     }

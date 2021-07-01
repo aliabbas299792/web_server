@@ -70,12 +70,12 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
 
 int server<server_type::NON_TLS>::add_write_req_continued(request *req, int written) { //for long plain HTTP write requests, this writes at the correct offset
   auto &client = clients[req->client_idx];
-  auto &to_write = client.send_data.front();
+  auto data = client.send_data.front().get_ptr_and_size();
 
   req->written += written;
   
   io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-  io_uring_prep_write(sqe, client.sockfd, &to_write.buff[req->written], req->total_length - req->written, 0); //do not write at an offset
+  io_uring_prep_write(sqe, client.sockfd, &data.buff[req->written], req->total_length - req->written, 0); //do not write at an offset
   io_uring_sqe_set_data(sqe, req);
   io_uring_submit(&ring); //submits the event
   return 0;
@@ -103,12 +103,12 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
     case event_type::WRITE: {
       int broadcast_additional_info = -1; // only used for broadcast messages
       auto &client = clients[req->client_idx];
-      client.num_write_reqs--; // decrement number of active write requests
       if(cqe_res + req->written < req->total_length && cqe_res > 0){ //if the current request isn't finished, continue writing
         int rc = add_write_req_continued(req, cqe_res);
         req = nullptr; //we don't want to free the req yet
         if(rc == 0) break;
       }
+      client.num_write_reqs--; // decrement number of active write requests
       if(active_connections.count(req->client_idx) && client.id == req->ID){
         //the above will check specifically if the client is still valid, since in the case that
         //a new client joins immediately after old one leaves, they might get the same clients

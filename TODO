@@ -1,12 +1,1 @@
-- Look out for segmentation faults when closing the server, it can lead to open ports (io_uring cqe interrupted call)
-
-- Set thread ID from the main loop rather than using the TCP server variable (get rid of that)
-  - Make it so that the signal to free memory has its own eventfd, and the server thread writes its thread ID
-
-- `VM514:2 WebSocket connection to 'wss://radio.erewhon.xyz/ws' failed: Could not decode a text frame as UTF-8.` check what this is and why it happens (i.e check the data being broadcast)
-- There is something wrong with the non tls, screwed for large files (works fine in TLS mode, probably something with add_write_req_continued)
-
-- In fact above errors seem to probably all be due to add_write_req_continued
-
-- TLS also crashes sometimes, not sure why, something wrong with memory management I think
-- Also crashes on normal files
+- Some refactoring, move the audio related stuff elsewhere

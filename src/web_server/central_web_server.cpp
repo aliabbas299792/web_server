@@ -96,10 +96,14 @@ void central_web_server::start_server(const char *config_file_path){
   //done reading config
   const auto num_threads = config_data_map.count("SERVER_THREADS") ? std::stoi(config_data_map["SERVER_THREADS"]) : 3; //by default uses 3 threads
 
-  if(config_data_map["TLS"] == "yes")
+  std::cout << "Running server\n";
+
+  if(config_data_map["TLS"] == "yes"){
+    std::cout << "TLS will be used\n";
     run<server_type::TLS>(num_threads);
-  else
+  }else{
     run<server_type::NON_TLS>(num_threads);
+  }
 }
 
 void central_web_server::add_event_read_req(int event_fd, central_web_server_event event, uint64_t custom_info){
