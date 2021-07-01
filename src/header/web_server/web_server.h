@@ -250,33 +250,4 @@ struct server_data {
   server_data(server_data &&data) = default;
 };
 
-struct audio_info {
-  std::string name{};
-  std::string artists{}; // comma separated if multiple
-  std::string album{};
-  std::string album_art_path{};
-  std::string release_data{};
-};
-
-struct audio_data {
-  audio_info audio1_info{};
-  void *audio1_ptr{};
-
-  // if another piece of audio starts during this interval
-  // just include it here at the correct offset
-  audio_info audio2_info{};
-  void *audio2_ptr{};
-  float audio2_start_offset{};
-};
-
-class audio_broadcaster {
-    int central_eventfd{};
-  public:
-    moodycamel::ReaderWriterQueue<audio_data> to_program_queue{};
-
-    void audio_thread();
-
-    audio_broadcaster(int eventfd) : central_eventfd(eventfd) {}
-};
-
 #endif

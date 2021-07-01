@@ -198,9 +198,6 @@ void central_web_server::run(int num_threads){
     add_event_read_req(thread_data.server.central_communication_eventfd, central_web_server_event::SERVER_THREAD_COMMUNICATION, idx++); // add read for all thread events
   }
 
-  audio_broadcaster broadcaster(event_fd);
-  std::thread audio_worker_thread(&audio_broadcaster::audio_thread, &broadcaster);
-
   // need to read on the kill efd
   add_event_read_req(kill_server_efd, central_web_server_event::KILL_SERVER);
   
@@ -298,8 +295,6 @@ void central_web_server::run(int num_threads){
   // wait for all threads to exit before exiting the program
   for(auto &thread_data : thread_data_container)
     thread_data.thread.join();
-
-  audio_worker_thread.join();
 }
 
 void central_web_server::kill_server(){
@@ -309,8 +304,4 @@ void central_web_server::kill_server(){
   tcp_tls_server::server<server_type::TLS>::kill_all_servers(); // kills all TLS servers
   tcp_tls_server::server<server_type::NON_TLS>::kill_all_servers(); // kills all non TLS servers
   // this will mean the run() function will exit
-}
-
-void audio_broadcaster::audio_thread(){
-  // something
 }
