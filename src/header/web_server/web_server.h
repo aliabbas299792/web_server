@@ -97,7 +97,6 @@ class web_server{
   moodycamel::ReaderWriterQueue<message_post_data> to_server_queue{};
   moodycamel::ReaderWriterQueue<message_post_data> to_program_queue{};
 
-  int central_communication_eventfd{};
 public:
   static std::vector<char> make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode);
   
@@ -114,11 +113,7 @@ public:
   std::vector<tcp_client> tcp_clients{}; //storing additional data related to the client_idxs passed to this layer
 
   //thread stuff
-  void set_central_communication_eventfd(int efd){
-    this->central_communication_eventfd = efd; //sets the program efd
-  }
-
-  int thread_id = -1; // thread_id is set by the main thread
+  int central_communication_eventfd = eventfd(0, 0);
   
   std::vector<broadcast_data_items> broadcast_data{}; // data from any broadcasts sent from the program thread
 
@@ -129,9 +124,9 @@ public:
   }
 
   void post_message_to_program(message_type msg_type, const char *buff_ptr, size_t length, int item_idx, uint64_t additional_info = -1){
-    if(!tcp_server || thread_id == -1) return; // need this stuff set before posting any messages
+    if(!tcp_server) return; // need this stuff set before posting any messages
     to_program_queue.emplace(msg_type, buff_ptr, length, item_idx, additional_info);
-    eventfd_write(central_communication_eventfd, thread_id + 1); //notify the program thread, sends thread_id + 1, since index of 0 can't be read
+    eventfd_write(central_communication_eventfd, 1); //notify the program thread using our eventfd
   }
   
   message_post_data get_from_to_program_queue(){ // so called from main program thread
@@ -186,6 +181,8 @@ struct central_web_server_req {
 
   size_t progress_bytes{}; // how much has been read/written
   int fd{};
+
+  uint64_t custom_info = -1;
 };
 
 class central_web_server {
@@ -208,13 +205,12 @@ private:
   void run(int num_threads);
 
   int event_fd = eventfd(0, 0);
-  int server_communication_eventfd = eventfd(0, 0);
   
   io_uring ring;
 
   data_store store{}; // the data store
 
-  void add_event_read_req(int eventfd, central_web_server_event event); // adds io_uring read request for the eventfd
+  void add_event_read_req(int eventfd, central_web_server_event event, uint64_t custom_info = 0); // adds io_uring read request for the eventfd
   void add_timer_read_req(int timerfd); // adds io_uring read request for the timerfd
   void add_read_req(int fd, size_t size); // adds normal read request on io_uring
   void add_write_req(int fd, const char *buff_ptr, size_t size); // adds normal write request on io_uring
@@ -242,7 +238,6 @@ struct server_data {
   std::thread thread{};
   web_server<T> server{};
   server_data(){
-    server.set_central_communication_eventfd(central_web_server::instance().server_communication_eventfd); // to allow for communication between the threads (on data available, it'll write to that fd)
     thread = std::thread(central_web_server::thread_server_runner<T>, std::ref(server));
   }
   server_data(server_data &&data) = default;

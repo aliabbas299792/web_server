@@ -102,12 +102,13 @@ void central_web_server::start_server(const char *config_file_path){
     run<server_type::NON_TLS>(num_threads);
 }
 
-void central_web_server::add_event_read_req(int event_fd, central_web_server_event event){
+void central_web_server::add_event_read_req(int event_fd, central_web_server_event event, uint64_t custom_info){
   io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
   auto *req = new central_web_server_req(); //enough space for the request struct
   req->buff.resize(sizeof(uint64_t));
   req->event = event;
   req->fd = event_fd;
+  req->custom_info = custom_info;
   
   io_uring_prep_read(sqe, event_fd, &(req->buff[0]), sizeof(uint64_t), 0); //don't read at an offset
   io_uring_sqe_set_data(sqe, req);
@@ -175,18 +176,6 @@ template<server_type T>
 void central_web_server::run(int num_threads){
   std::cout << "Using " << num_threads << " threads\n";
 
-  const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
-
-  std::vector<server_data<T>> thread_data_container{};
-  thread_data_container.resize(num_threads);
-
-  int id = 0;
-  for(auto &thread_data : thread_data_container)
-    thread_data.server.thread_id = id++; //thread ID corresponds to index in the array
-
-  audio_broadcaster broadcaster(event_fd);
-  std::thread audio_worker_thread(&audio_broadcaster::audio_thread, &broadcaster);
-
   // the main io_uring loop
 
   std::memset(&ring, 0, sizeof(io_uring));
@@ -194,9 +183,22 @@ void central_web_server::run(int num_threads){
 
   io_uring_cqe *cqe;
 
+  const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
+
+  std::vector<server_data<T>> thread_data_container{};
+  thread_data_container.resize(num_threads);
+
+  int idx = 0;
+  for(auto &thread_data : thread_data_container){
+    // custom info is the idx of the server in the vector
+    add_event_read_req(thread_data.server.central_communication_eventfd, central_web_server_event::SERVER_THREAD_COMMUNICATION, idx++); // add read for all thread events
+  }
+
+  audio_broadcaster broadcaster(event_fd);
+  std::thread audio_worker_thread(&audio_broadcaster::audio_thread, &broadcaster);
+
   // need to read on the event fd's
   add_event_read_req(event_fd, central_web_server_event::EVENTFD);
-  add_event_read_req(server_communication_eventfd, central_web_server_event::SERVER_THREAD_COMMUNICATION);
   
   bool run_server = true;
 
@@ -271,12 +273,12 @@ void central_web_server::run(int num_threads){
         break;
       }
       case central_web_server_event::SERVER_THREAD_COMMUNICATION: {
-        const auto thread_id = *reinterpret_cast<uint64_t*>(req->buff.data()) - 1; // index + 1 is sent since 0 can't be read, so -1 is the index/thread id
+        if(req->custom_info != -1){ // then the idx is set as custom_info
+          auto data = thread_data_container[req->custom_info].server.get_from_to_program_queue();
+          store.free_item(data.item_idx);
 
-        auto data = thread_data_container[thread_id].server.get_from_to_program_queue();
-        store.free_item(data.item_idx);
-
-        add_event_read_req(server_communication_eventfd, central_web_server_event::SERVER_THREAD_COMMUNICATION); // rearm the eventfd
+          add_event_read_req(req->fd, central_web_server_event::SERVER_THREAD_COMMUNICATION, req->custom_info); // rearm the eventfd
+        }
         break;
       }
       case central_web_server_event::READ:
