@@ -6,18 +6,18 @@
 std::unordered_map<std::string, std::string> central_web_server::config_data_map{};
 
 template<>
-void central_web_server::thread_server_runner(tls_web_server &basic_web_server){
-  tls_server tcp_server(
+void central_web_server::thread_server_runner(web_server::tls_web_server &basic_web_server){
+  web_server::tls_server tcp_server(
     std::stoi(config_data_map["TLS_PORT"]),
     config_data_map["FULLCHAIN"],
     config_data_map["PKEY"],
     &basic_web_server,
-    accept_cb<server_type::TLS>,
-    close_cb<server_type::TLS>,
-    read_cb<server_type::TLS>,
-    write_cb<server_type::TLS>,
-    event_cb<server_type::TLS>,
-    custom_read_cb<server_type::TLS>
+    tcp_callbacks::accept_cb<server_type::TLS>,
+    tcp_callbacks::close_cb<server_type::TLS>,
+    tcp_callbacks::read_cb<server_type::TLS>,
+    tcp_callbacks::write_cb<server_type::TLS>,
+    tcp_callbacks::event_cb<server_type::TLS>,
+    tcp_callbacks::custom_read_cb<server_type::TLS>
   ); //pass function pointers and a custom object
 
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
@@ -26,16 +26,16 @@ void central_web_server::thread_server_runner(tls_web_server &basic_web_server){
 }
 
 template<>
-void central_web_server::thread_server_runner(plain_web_server &basic_web_server){
-  plain_server tcp_server(
+void central_web_server::thread_server_runner(web_server::plain_web_server &basic_web_server){
+  web_server::plain_server tcp_server(
     std::stoi(config_data_map["PORT"]),
     &basic_web_server,
-    accept_cb<server_type::NON_TLS>,
-    close_cb<server_type::NON_TLS>,
-    read_cb<server_type::NON_TLS>,
-    write_cb<server_type::NON_TLS>,
-    event_cb<server_type::NON_TLS>,
-    custom_read_cb<server_type::NON_TLS>
+    tcp_callbacks::accept_cb<server_type::NON_TLS>,
+    tcp_callbacks::close_cb<server_type::NON_TLS>,
+    tcp_callbacks::read_cb<server_type::NON_TLS>,
+    tcp_callbacks::write_cb<server_type::NON_TLS>,
+    tcp_callbacks::event_cb<server_type::NON_TLS>,
+    tcp_callbacks::custom_read_cb<server_type::NON_TLS>
   ); //pass function pointers and a custom object
   
   basic_web_server.set_tcp_server(&tcp_server); //required to be called, to give it a pointer to the server
@@ -187,7 +187,7 @@ void central_web_server::run(int num_threads){
 
   io_uring_cqe *cqe;
 
-  const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server<server_type::TLS>::make_ws_frame : web_server<server_type::NON_TLS>::make_ws_frame;
+  const auto make_ws_frame = config_data_map["TLS"] == "yes" ? web_server::basic_web_server<server_type::TLS>::make_ws_frame : web_server::basic_web_server<server_type::NON_TLS>::make_ws_frame;
 
   std::vector<server_data<T>> thread_data_container{};
   thread_data_container.resize(num_threads);
@@ -249,7 +249,7 @@ void central_web_server::run(int num_threads){
         break;
       }
       case central_web_server_event::TIMERFD: {
-        auto ws_data = make_ws_frame("haha", websocket_non_control_opcodes::text_frame);
+        auto ws_data = make_ws_frame("haha", web_server::websocket_non_control_opcodes::text_frame);
 
         auto item_data = store.insert_item(std::move(ws_data), num_threads);
 
@@ -257,7 +257,7 @@ void central_web_server::run(int num_threads){
         // and then notify the central server that we don't need the buffer anymore
 
         for(auto &thread_data : thread_data_container)
-          thread_data.server.post_message_to_server_thread(message_type::websocket_broadcast, reinterpret_cast<const char*>(item_data.buffer.ptr), item_data.buffer.size, item_data.idx);
+          thread_data.server.post_message_to_server_thread(web_server::message_type::websocket_broadcast, reinterpret_cast<const char*>(item_data.buffer.ptr), item_data.buffer.size, item_data.idx);
 
         add_timer_read_req(timer_fd); // rearm the timer
         break;
@@ -306,8 +306,8 @@ void central_web_server::kill_server(){
   auto kill_sig = central_web_server_event::KILL_SERVER;
   write(event_fd, &kill_sig, sizeof(kill_sig));
 
-  server<server_type::TLS>::kill_all_servers(); // kills all TLS servers
-  server<server_type::NON_TLS>::kill_all_servers(); // kills all non TLS servers
+  tcp_tls_server::server<server_type::TLS>::kill_all_servers(); // kills all TLS servers
+  tcp_tls_server::server<server_type::NON_TLS>::kill_all_servers(); // kills all non TLS servers
   // this will mean the run() function will exit
 }
 

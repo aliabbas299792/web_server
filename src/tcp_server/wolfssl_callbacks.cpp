@@ -1,7 +1,9 @@
 #include "../header/server.h"
 #include "../header/utility.h"
 
-int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, and returns how much was written from the send_data map, if appropriate
+using namespace tcp_tls_server;
+
+int tcp_tls_server::tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, sends a special accept write request to io_uring, and returns how much was written from the send_data map, if appropriate
   int client_idx = wolfSSL_get_fd(ssl);
   auto *tcp_server = (server<server_type::TLS>*)ctx;
   auto &client = tcp_server->clients[client_idx];
@@ -28,7 +30,7 @@ int tls_send(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //send callback, send
   }
 }
 
-int tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *buff, int sz, bool accept){
+int tcp_tls_server::tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *buff, int sz, bool accept){
   auto &client = tcp_server->clients[client_idx];
   auto &data = client.recv_data; //the data vector
   const auto recvd_amount = data.size();
@@ -51,7 +53,7 @@ int tls_recv_helper(server<server_type::TLS> *tcp_server, int client_idx, char *
   }
 }
 
-int tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
+int tcp_tls_server::tls_recv(WOLFSSL* ssl, char* buff, int sz, void* ctx){ //receive callback
   int client_idx = wolfSSL_get_fd(ssl);
   auto *tcp_server = (server<server_type::TLS>*)ctx;
   auto &client = tcp_server->clients[client_idx];

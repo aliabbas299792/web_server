@@ -1,8 +1,10 @@
 #pragma once
 #include "../header/web_server/web_server.h"
 
+using namespace web_server;
+
 template<server_type T>
-void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx){
+void basic_web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_key, const std::string &path, int client_idx){
   const std::string accept_header_value = get_accept_header_value(sec_websocket_key);
   const auto resp = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept_header_value + "\r\n\r\n";
 
@@ -17,7 +19,7 @@ void web_server<T>::websocket_accept_read_cb(const std::string& sec_websocket_ke
 }
 
 template<server_type T>
-void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int length){ //we assume that the tcp server has been set by this point
+void basic_web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int length){ //we assume that the tcp server has been set by this point
   auto ws_client_idx = tcp_clients[client_idx].ws_client_idx;
   std::vector<std::vector<char>> frames{};
   auto frame_pair = get_ws_frames(buffer, length, ws_client_idx);
@@ -80,7 +82,7 @@ void web_server<T>::websocket_process_read_cb(int client_idx, char *buffer, int 
 }
 
 template<server_type T>
-bool web_server<T>::websocket_process_write_cb(int client_idx){
+bool basic_web_server<T>::websocket_process_write_cb(int client_idx){
   auto ws_client_idx = tcp_clients[client_idx].ws_client_idx;
   if(all_websocket_connections.count(ws_client_idx)){
     close_ws_connection_potential_confirm(ws_client_idx);
@@ -90,14 +92,14 @@ bool web_server<T>::websocket_process_write_cb(int client_idx){
 }
 
 template<server_type T>
-void web_server<T>::websocket_write(int ws_client_idx, std::vector<char> &&buff){
+void basic_web_server<T>::websocket_write(int ws_client_idx, std::vector<char> &&buff){
   auto &client_data = websocket_clients[ws_client_idx];
   client_data.currently_writing++;
   tcp_server->write_connection(client_data.client_idx, std::move(buff));
 }
 
 template<server_type T>
-int web_server<T>::new_ws_client(int client_idx){
+int basic_web_server<T>::new_ws_client(int client_idx){
   auto index = 0;
 
   if(freed_indexes.size()){ //if there's a free index, give that
@@ -123,7 +125,7 @@ int web_server<T>::new_ws_client(int client_idx){
 }
 
 template<server_type T>
-std::string web_server<T>::get_accept_header_value(std::string input) {
+std::string basic_web_server<T>::get_accept_header_value(std::string input) {
   input += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; //concatenate magic string
   unsigned char hash[SHA_DIGEST_LENGTH];
   SHA1((const unsigned char*)input.c_str(), input.size(), hash);
@@ -135,7 +137,7 @@ std::string web_server<T>::get_accept_header_value(std::string input) {
 }
 
 template<server_type T>
-ulong web_server<T>::get_ws_frame_length(const char *buffer){
+ulong basic_web_server<T>::get_ws_frame_length(const char *buffer){
   ulong packet_length = buffer[1] & 0x7f;
   if(packet_length == 126){
     packet_length = ntohs(*((u_short*)&((uchar*)buffer)[2])) + 2; //the 2 bytes extra needed to store the length are added
@@ -146,7 +148,7 @@ ulong web_server<T>::get_ws_frame_length(const char *buffer){
 }
 
 template<server_type T>
-std::vector<char> web_server<T>::make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode){
+std::vector<char> basic_web_server<T>::make_ws_frame(const std::string &packet_msg, websocket_non_control_opcodes opcode){
   //gets the correct offsets and sizes
   int offset = 2; //first 2 bytes for the header data (excluding the extended length bit)
   uchar payload_len_char = 0;
@@ -188,7 +190,7 @@ std::vector<char> web_server<T>::make_ws_frame(const std::string &packet_msg, we
 }
 
 template<server_type T>
-bool web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_already_closed){
+bool basic_web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_already_closed){
   auto &client_data = websocket_clients[ws_client_idx];
   client_data.currently_writing++;
   active_websocket_connections_client_idxs.erase(client_data.client_idx); // considered closed to outside observers now
@@ -201,7 +203,7 @@ bool web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_alrea
 }
 
 template<server_type T>
-bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
+bool basic_web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
   auto &client_data = websocket_clients[ws_client_idx];
   if(client_data.currently_writing == 1){
     if(client_data.close){
@@ -215,7 +217,7 @@ bool web_server<T>::close_ws_connection_potential_confirm(int ws_client_idx){
 }
 
 template<server_type T>
-std::pair<int, std::vector<char>> web_server<T>::decode_websocket_frame(std::vector<char> &&data){
+std::pair<int, std::vector<char>> basic_web_server<T>::decode_websocket_frame(std::vector<char> &&data){
   const auto *data_ptr = reinterpret_cast<uchar*>(&data[0]);
   const uint fin = (data_ptr[0] & 0x80) == 0x80;
   const uint opcode = data_ptr[0] & 0xf;
@@ -251,7 +253,7 @@ std::pair<int, std::vector<char>> web_server<T>::decode_websocket_frame(std::vec
 }
 
 template<server_type T>
-std::pair<int, std::vector<std::vector<char>>> web_server<T>::get_ws_frames(char *buffer, int length, int ws_client_idx){
+std::pair<int, std::vector<std::vector<char>>> basic_web_server<T>::get_ws_frames(char *buffer, int length, int ws_client_idx){
   std::vector<std::vector<char>> frames;
 
   int remaining_length = length;

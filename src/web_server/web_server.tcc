@@ -1,9 +1,10 @@
 #pragma once
 #include "../header/web_server/web_server.h"
-#include "../header/utility.h"
+
+using namespace web_server;
 
 template<server_type T>
-bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
+bool basic_web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
   char *saveptr = nullptr;
   const char* token = strtok_r((char*)path.c_str(), "/", &saveptr);
   const char* subdir = token ? token : "";
@@ -21,7 +22,7 @@ bool web_server<T>::get_process(std::string &path, bool accept_bytes, const std:
 }
 
 template<server_type T>
-bool web_server<T>::is_valid_http_req(const char* buff, int length){
+bool basic_web_server<T>::is_valid_http_req(const char* buff, int length){
   if(length < 16) return false; //minimum size for valid HTTP request is 16 bytes
   const char *types[] = { "GET ", "POST ", "PUT ", "DELETE ", "PATCH " };
   u_char valid = 0x1f;
@@ -32,7 +33,7 @@ bool web_server<T>::is_valid_http_req(const char* buff, int length){
 }
 
 template<server_type T>
-std::string web_server<T>::get_content_type(std::string filepath){
+std::string basic_web_server<T>::get_content_type(std::string filepath){
   char *file_extension_data = (char*)filepath.c_str();
   std::string file_extension = "";
   char *saveptr = nullptr;
@@ -65,7 +66,7 @@ std::string web_server<T>::get_content_type(std::string filepath){
 }
 
 template<server_type T>
-bool web_server<T>::send_file_request(int client_idx, const std::string &filepath, bool accept_bytes, int response_code){
+bool basic_web_server<T>::send_file_request(int client_idx, const std::string &filepath, bool accept_bytes, int response_code){
   const auto file_fd = open(filepath.c_str(), O_RDONLY);
 
   std::string header_first_line{};
@@ -123,20 +124,20 @@ bool web_server<T>::send_file_request(int client_idx, const std::string &filepat
 }
 
 template<server_type T>
-void web_server<T>::set_tcp_server(server<T> *server){
+void basic_web_server<T>::set_tcp_server(tcp_tls_server::server<T> *server){
   tcp_server = server;
   tcp_server->custom_read_req(web_cache.inotify_fd, sizeof(inotify_event)); //always read from inotify_fd - we only read size of event, since we monitor files
 }
 
 template<server_type T>
-void web_server<T>::new_tcp_client(int client_idx){
+void basic_web_server<T>::new_tcp_client(int client_idx){
   if(client_idx + 1 >= tcp_clients.size()) //size starts from 1, idx starts from 0
     tcp_clients.resize(client_idx + 1);
   tcp_clients[client_idx] = tcp_client();
 }
 
 template<server_type T>
-void web_server<T>::kill_client(int client_idx){
+void basic_web_server<T>::kill_client(int client_idx){
   web_cache.finished_with_item(client_idx, tcp_clients[client_idx]);
   tcp_clients[client_idx].using_file = false;
 
@@ -150,7 +151,7 @@ void web_server<T>::kill_client(int client_idx){
 }
 
 template<server_type T>
-void web_server<T>::close_connection(int client_idx){
+void basic_web_server<T>::close_connection(int client_idx){
   kill_client(client_idx); //destroy any data related to this request
   tcp_server->close_connection(client_idx);
 }

@@ -3,6 +3,8 @@
 
 #include <thread>
 
+using namespace tcp_tls_server;
+
 // define static stuff
 std::vector<server<server_type::TLS>*> server<server_type::TLS>::tls_servers{};
 std::mutex server<server_type::TLS>::tls_server_vector_access{};

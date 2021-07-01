@@ -46,7 +46,7 @@ namespace web_cache {
         free_idxs.insert(i);
     }
 
-    cache_fetch_item fetch_item(const std::string &filepath, int client_idx, tcp_client &client){
+    cache_fetch_item fetch_item(const std::string &filepath, int client_idx, web_server::tcp_client &client){
       if(filepath_to_cache_idx.count(filepath)) {
         auto current_idx = filepath_to_cache_idx[filepath];
         auto &item = cache_buffer[current_idx];
@@ -167,7 +167,7 @@ namespace web_cache {
       }
     }
 
-    void finished_with_item(int client_idx, tcp_client &client){ //requires a pointer to the client object, for the using_file stuff - to ensure it's not decremented too many times
+    void finished_with_item(int client_idx, web_server::tcp_client &client){ //requires a pointer to the client object, for the using_file stuff - to ensure it's not decremented too many times
       if(client.using_file){
         const auto cache_idx = client_idx_to_cache_idx[client_idx];
         cache_buffer[cache_idx].lock_number--;

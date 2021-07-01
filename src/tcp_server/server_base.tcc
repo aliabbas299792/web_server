@@ -1,7 +1,9 @@
 #pragma once
 #include "../header/server.h"
-#include "../header/utility.h"
+
 #include <sys/socket.h>
+
+using namespace tcp_tls_server;
 
 //initialise static members
 template<server_type T>
