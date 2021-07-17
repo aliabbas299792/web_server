@@ -28,7 +28,7 @@ namespace web_server {
 
   struct tcp_client {
     std::string last_requested_read_filepath{}; //the last filepath it was asked to read
-    int ws_client_idx{};
+    int ws_client_idx = -1;
     bool using_file = false;
   };
 }
