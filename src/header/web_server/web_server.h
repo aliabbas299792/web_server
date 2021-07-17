@@ -38,8 +38,8 @@ namespace web_server{
     bool close = false; //should this socket be closed
     std::vector<char> websocket_frames{};
     receiving_data_info receiving_data{};
-    int id = 0; //in case we use io_uring later
-    int client_idx{}; //for the TCP/TLS layer
+    int id = -1; //in case we use io_uring later
+    int client_idx = -1; //for the TCP/TLS layer
   };
 
   struct message_post_data {
@@ -186,7 +186,7 @@ struct central_web_server_req {
   size_t size = -1; // if this is -1, buff_ptr is unused
 
   size_t progress_bytes{}; // how much has been read/written
-  int fd{};
+  int fd = -1;
 
   uint64_t custom_info = -1;
 };
