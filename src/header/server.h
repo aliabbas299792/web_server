@@ -124,8 +124,8 @@ namespace tcp_tls_server {
   };
 
   struct client_base {
-    int id{};
-    int sockfd{};
+    int id = -1;
+    int sockfd = -1;
     std::queue<write_data> send_data{};
 
     bool read_req_active = false;
