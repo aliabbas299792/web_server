@@ -277,11 +277,13 @@ namespace tcp_tls_server {
 
       friend class server_base;
       void tls_accept(int client_socket);
+      void tls_accepted_routine(const int client_idx);
       
       //this takes the request pointer by reference, since for now, we are still using some manual memory management
       void req_event_handler(request *&req, int cqe_res); //the main event handler
 
       WOLFSSL_CTX *wolfssl_ctx = nullptr;
+      std::unordered_set<int> uninitiated_connections{}; // for connections which have finished not yet finished negotiating (so not yet in active_connections)
 
       // for storing and accessing all of the TLS servers on all threads
       static std::vector<server<server_type::TLS>*> tls_servers;
