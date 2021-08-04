@@ -64,6 +64,7 @@ void server<server_type::NON_TLS>::close_connection(int client_idx) {
     active_connections.erase(client_idx);
     client.send_data = {}; //free up all the data we might have wanted to send
 
+    shutdown(client.sockfd, SHUTDOWN_RDWR);
     close(client.sockfd);
 
     freed_indexes.insert(client_idx);
