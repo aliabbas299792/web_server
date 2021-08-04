@@ -21,6 +21,7 @@ void server<server_type::TLS>::close_connection(int client_idx) {
     wolfSSL_shutdown(client.ssl);
     wolfSSL_free(client.ssl);
 
+    shutdown(client.sockfd, SHUTDOWN_RDWR);
     close(client.sockfd);
 
     client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
