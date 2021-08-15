@@ -69,7 +69,7 @@ void server<server_type::NON_TLS>::start_closing_connection(int client_idx){
 
     int shutdwn = shutdown(client.sockfd, SHUT_WR); // stop writing, continue reading
 
-    add_read_req(client_idx, event_type::READ);
+    add_read_req(client_idx, event_type::READ_FINAL);
   }
 }
 
