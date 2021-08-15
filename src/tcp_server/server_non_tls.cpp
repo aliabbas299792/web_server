@@ -40,9 +40,11 @@ server<server_type::NON_TLS>::server(
 void server<server_type::NON_TLS>::write_connection(int client_idx, std::vector<char> &&buff) {
   auto &client = clients[client_idx];
   client.send_data.emplace(std::move(buff));
+  std::cout << "send data size: " << client.send_data.size() << "\n";
   if(client.send_data.size() == 1){ //only adds a write request in the case that the queue was empty before this
     auto &data_ref = client.send_data.front();
     auto &buff = data_ref.buff;
+    std::cout << "adding write req.... " << client_idx << " ## " << client.sockfd << "\n";
     add_write_req(client_idx, event_type::WRITE, &buff[0], buff.size());
   }
 }
@@ -57,17 +59,31 @@ void server<server_type::NON_TLS>::write_connection(int client_idx, char* buff, 
   }
 }
 
-void server<server_type::NON_TLS>::close_connection(int client_idx) {
+void server<server_type::NON_TLS>::start_closing_connection(int client_idx){
   auto &client = clients[client_idx];
 
-  if(client.num_write_reqs == 0){ // only erase this client if they haven't got any active write requests
-    active_connections.erase(client_idx);
+  if(client.num_write_reqs == 0 && active_connections.count(client_idx)){ // only erase this client if they haven't got any active write requests
+    clean_up_client_resources(client_idx);
+
     client.send_data = {}; //free up all the data we might have wanted to send
 
-    shutdown(client.sockfd, SHUT_RDWR);
-    close(client.sockfd);
+    int shutdwn = shutdown(client.sockfd, SHUT_WR); // stop writing, continue reading
 
-    freed_indexes.insert(client_idx);
+    add_read_req(client_idx, event_type::READ);
+  }
+}
+
+void server<server_type::NON_TLS>::finish_closing_connection(int client_idx) {
+  auto &client = clients[client_idx];
+
+  if(client.num_write_reqs == 0 && active_connections.count(client_idx)){ // only erase this client if they haven't got any active write requests
+    int shutdwn = shutdown(client.sockfd, SHUT_RD);
+    int clse = close(client.sockfd);
+
+    active_connections.erase(client_idx);
+    freed_indexes.insert(freed_indexes.end(), client_idx);
+
+    std::cout << "\t\tfinished shutting down connection (shutdown ## close): (" << shutdwn << " ## " << clse << ")\n";
   }
 }
 
@@ -100,7 +116,13 @@ void server<server_type::NON_TLS>::req_event_handler(request *&req, int cqe_res)
     }
     case event_type::READ: {
       clients[req->client_idx].read_req_active = false;
+      std::cout << "socket about to be processed: " << clients[req->client_idx].sockfd << " ## client idx: " << req->client_idx << std::endl;
       if(read_cb != nullptr) read_cb(req->client_idx, &(req->read_data[0]), cqe_res, this, custom_obj);
+      break;
+    }
+    case event_type::READ_FINAL: {
+      clients[req->client_idx].read_req_active = false;
+      finish_closing_connection(req->client_idx);
       break;
     }
     case event_type::WRITE: {

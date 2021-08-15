@@ -1,26 +1,37 @@
 #pragma once
 #include "../header/web_server/web_server.h"
+#include <chrono>
 
 using namespace web_server;
 
 template<server_type T>
-bool basic_web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx){
-  const auto original_path = path;
+bool basic_web_server<T>::instance_exists = false;
 
+template<server_type T>
+bool basic_web_server<T>::get_process(std::string &path, bool accept_bytes, const std::string& sec_websocket_key, int client_idx, std::string ip){
+  char *path_temp = strdup(path.c_str());
+  
   char *saveptr = nullptr;
-  const char* token = strtok_r((char*)path.c_str(), "/", &saveptr);
-  const char* subdir = token ? token : "";
+  char *token = strtok_r(path_temp, "/", &saveptr);
+  std::string subdir = token ? token : "";
 
-  if( (strlen(subdir) == 2 && strncmp(subdir, "ws", 2) == 0)  && sec_websocket_key != ""){
+  if(subdir == "ws"  && sec_websocket_key != ""){
     websocket_accept_read_cb(sec_websocket_key, path.substr(2), client_idx);
+    free(path_temp);
     return true;
-  }else{
-    path = original_path == "" ? "public/index.html" : "public/"+original_path;
-    
-    if(send_file_request(client_idx, path, accept_bytes, 200))
-      return true;
-    return false;
   }
+
+  std::vector<std::string> subdirs{};
+
+  while((token = strtok_r(nullptr, "/", &saveptr)) != nullptr)
+    subdirs.push_back(token);
+  free(path_temp);
+
+  path = path == "" ? "public/index.html" : "public/"+path;
+  
+  if(send_file_request(client_idx, path, accept_bytes, 200))
+    return true;
+  return false;
 }
 
 template<server_type T>
@@ -107,9 +118,7 @@ bool basic_web_server<T>::send_file_request(int client_idx, const std::string &f
     headers += "Content-Length: ";
   }
   headers += content_length + "\r\n";
-
-  if(!cache_data.found)
-    headers += "Cache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\nExpires: 0\r\n";
+  headers += "Connection: close\r\nKeep-Alive: timeout=0, max=0\r\nCache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\nExpires: 0\r\n";
   
   headers += "\r\n";
 
@@ -121,7 +130,7 @@ bool basic_web_server<T>::send_file_request(int client_idx, const std::string &f
     tcp_server->write_connection(client_idx, cache_data.buff, cache_data.size);
   }else{
     tcp_clients[client_idx].last_requested_read_filepath =  filepath; //so that when the file is read, it will be stored with the correct file path
-    tcp_server->custom_read_req(file_fd, file_size, client_idx, std::move(send_buffer), headers.size());
+    tcp_server->custom_read_req(file_fd, file_size, true, client_idx, std::move(send_buffer), headers.size()); // true is for using custom_read_req_continued
   }
 
   return true;
@@ -130,7 +139,7 @@ bool basic_web_server<T>::send_file_request(int client_idx, const std::string &f
 template<server_type T>
 void basic_web_server<T>::set_tcp_server(tcp_tls_server::server<T> *server){
   tcp_server = server;
-  tcp_server->custom_read_req(web_cache.inotify_fd, sizeof(inotify_event)); //always read from inotify_fd - we only read size of event, since we monitor files
+  tcp_server->custom_read_req(web_cache.inotify_fd, inotify_read_size); //always read from inotify_fd - we only read size of event, since we monitor files
 }
 
 template<server_type T>
@@ -141,21 +150,25 @@ void basic_web_server<T>::new_tcp_client(int client_idx){
 }
 
 template<server_type T>
-void basic_web_server<T>::kill_client(int client_idx){
+void basic_web_server<T>::kill_client(int client_idx){ // be wary of this, I don't think this will cause issues, but maybe it's possible that a new websocket client is at that index already and could be an issue?
   web_cache.finished_with_item(client_idx, tcp_clients[client_idx]);
-  tcp_clients[client_idx].using_file = false;
 
   int ws_client_idx = tcp_clients[client_idx].ws_client_idx;
   all_websocket_connections.erase(ws_client_idx); //connection definitely closed now
+
+  tcp_clients[client_idx] = tcp_client(); // reset any info about the client
+
+  for(auto &set : broadcast_ws_clients_tcp_client_idxs)
+    set.erase(client_idx);
   
-  if(active_websocket_connections_client_idxs.count(client_idx)){ // i.e in the case this function is called with a currently open websocket
+  if(active_websocket_connections_client_idxs.count(ws_client_idx)){
     active_websocket_connections_client_idxs.erase(client_idx);
-    freed_indexes.insert(ws_client_idx);
+    freed_indexes.insert(freed_indexes.end(), ws_client_idx);
   }
 }
 
 template<server_type T>
 void basic_web_server<T>::close_connection(int client_idx){
   kill_client(client_idx); //destroy any data related to this request
-  tcp_server->close_connection(client_idx);
+  tcp_server->start_closing_connection(client_idx);
 }

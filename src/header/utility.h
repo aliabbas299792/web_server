@@ -13,6 +13,7 @@
 #include <unistd.h> //read
 #include <fcntl.h> //open
 #include <sys/types.h> //O_RDONLY
+#include <sys/timerfd.h> //for the timerfd
 
 typedef struct stat stat_struct;
 
@@ -20,6 +21,17 @@ namespace utility {
   void fatal_error(std::string error_message); //fatal error helper function
   uint64_t get_file_size(int file_fd); //gets file size of the file descriptor passed in
   void sigint_handler(int sig_number); //handler used in main for handling SIGINT
+
+  void log_helper_function(std::string msg, bool cerr_or_not);
+  
+  std::string replace(std::string s1, std::string s2, std::string pattern);
+  std::string remove_from_slash_string(std::string slash_string, std::string remove_string); // removes ABCD from `123/abc/ABCD/efg`, making `123/abc/efg`
+  
+  void set_timerfd_interval(int timerfd, int ms);
+  
+  uint64_t random_number(uint64_t min, uint64_t max);
+
+  std::string to_web_name(std::string name); // simple function to make the input lower case, and replace spaces with underscores
 
   //removes first n elements from a vector
   template <typename T>

@@ -1,9 +1,12 @@
 #ifndef CACHE
 #define CACHE
 
+#include <iostream>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+
+#include "../utility.h"
 
 #include <sys/inotify.h>
 
@@ -16,7 +19,7 @@ namespace web_cache {
     int next_item_idx = -1;
     int prev_item_idx = -1;
     bool outdated = false; //if true, then removed from cache
-    int watch{};
+    int watch = -1;
   };
 
   struct cache_fetch_item {
@@ -43,10 +46,13 @@ namespace web_cache {
 
     cache(){ //only works for cache's which are greater than 1 in size
       for(int i = 0; i < cache_buffer.size(); i++)
-        free_idxs.insert(i);
+        free_idxs.insert(free_idxs.end(), i);
     }
 
     cache_fetch_item fetch_item(const std::string &filepath, int client_idx, web_server::tcp_client &client){
+      if(client_idx < 0) // for the off chance that an invalid client ID is supplied
+        return { false, nullptr };
+      
       if(filepath_to_cache_idx.count(filepath)) {
         auto current_idx = filepath_to_cache_idx[filepath];
         auto &item = cache_buffer[current_idx];
@@ -67,7 +73,7 @@ namespace web_cache {
             
             inotify_rm_watch(inotify_fd, item.watch); //remove the watcher for this item
             watch_to_cache_idx.erase(item.watch);
-            free_idxs.insert(current_idx);
+            free_idxs.insert(free_idxs.end(), current_idx);
             item = cache_item();
 
             return { false, nullptr };
@@ -90,7 +96,7 @@ namespace web_cache {
         if(outdated_file){
           inotify_rm_watch(inotify_fd, item.watch); //remove the watcher for this item
           watch_to_cache_idx.erase(item.watch);
-          free_idxs.insert(current_idx);
+          free_idxs.insert(free_idxs.end(), current_idx);
           item = cache_item();
 
           return { false, nullptr };
@@ -108,7 +114,7 @@ namespace web_cache {
       }
     }
     
-    bool try_insert_item(int client_idx, const std::string &filepath, std::vector<char> &&buff){
+    bool try_insert_item(const std::string &filepath, std::vector<char> &&buff){
       int current_idx = -1;
 
       if(free_idxs.size()){ //if free idxs available
@@ -145,9 +151,9 @@ namespace web_cache {
         filepath_to_cache_idx[filepath] = current_idx;
         cache_idx_to_filepath[current_idx] = filepath;
 
-        current_item.watch = inotify_add_watch(inotify_fd, filepath.c_str(), IN_MODIFY);
+        current_item.watch = inotify_add_watch(inotify_fd, filepath.c_str(), IN_MODIFY); // doesn't watch for deleted/created files in the cache, only modified
         watch_to_cache_idx[current_item.watch] = current_idx;
-
+        
         current_item.prev_item_idx = highest_idx; //promote to highest
         current_item.next_item_idx = -1;
         highest_idx = current_idx; //new highest position
@@ -168,6 +174,11 @@ namespace web_cache {
     }
 
     void finished_with_item(int client_idx, web_server::tcp_client &client){ //requires a pointer to the client object, for the using_file stuff - to ensure it's not decremented too many times
+      if(client_idx < 0){ // for the off chance that an invalid client ID is supplied
+        utility::log_helper_function(std::string(__func__) + " ## " + std::to_string(__LINE__) + " ## " + std::string(__FILE__) + " ## Client idx: " + std::to_string(client_idx) + " ## " + std::to_string(client.using_file), true);
+        return;
+      }
+
       if(client.using_file){
         const auto cache_idx = client_idx_to_cache_idx[client_idx];
         cache_buffer[cache_idx].lock_number--;

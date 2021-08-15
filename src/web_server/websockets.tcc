@@ -10,12 +10,32 @@ void basic_web_server<T>::websocket_accept_read_cb(const std::string& sec_websoc
 
   std::vector<char> send_buffer(resp.size());
   std::memcpy(&send_buffer[0], resp.c_str(), resp.size());
+  tcp_server->write_connection(client_idx, std::move(send_buffer));
 
   int ws_client_idx = new_ws_client(client_idx); //sets this index up as a new client
-
   tcp_clients[client_idx].ws_client_idx = ws_client_idx;
-  
-  tcp_server->write_connection(client_idx, std::move(send_buffer));
+  auto ws_client_id = websocket_clients[ws_client_idx].id;
+
+  std::vector<std::string> subdirs{};
+
+  char *save_ptr{};
+  char *path_dup = strdup(path.c_str());
+  char *path_dup_original = path_dup;
+  char *path_part{};
+  while((path_part = strtok_r(path_dup, "/", &save_ptr)) != nullptr){
+    path_dup = nullptr;
+    subdirs.push_back(path_part);
+  }
+  free(path_dup_original);
+
+  if(subdirs[0] == "test" && subdirs.size() == 1){
+    subscribe_client(0, client_idx); // subscribed to channel 0
+    return;
+  }
+
+  // not currently accepting any websockets
+  websocket_write(ws_client_idx, make_ws_frame("INVALID_ENDPOINT", websocket_non_control_opcodes::text_frame));
+  close_ws_connection_req(ws_client_idx);
 }
 
 template<server_type T>
@@ -108,18 +128,18 @@ int basic_web_server<T>::new_ws_client(int client_idx){
 
     auto &freed_client = websocket_clients[index];
 
-    const auto new_id = (freed_client.id + 1) % 100; //ID loops every 100
-    freed_client = ws_client();
+    const auto new_id = (freed_client.id + 1) % 1000000; //ID loops every 1000000
     freed_client.id = new_id;
   }else{
-    websocket_clients.emplace(websocket_clients.end()); //otherwise give a new one
+    websocket_clients.emplace_back(); //otherwise give a new one
     index = websocket_clients.size()-1;
   }
-  
+
   websocket_clients[index].client_idx = client_idx; // for the tcp layer sockets
 
   all_websocket_connections.insert(index); // stores ws_client_idx
-  active_websocket_connections_client_idxs.insert(client_idx); // uses the tcp layer socket idx because it's used early on to determine if a connection ws or not
+  active_websocket_connections_client_idxs.insert(client_idx);
+  // above uses the tcp layer socket idx because it's used early on to determine if a connection ws or not, and for pinging
 
   return index;
 }
@@ -192,6 +212,10 @@ std::vector<char> basic_web_server<T>::make_ws_frame(const std::string &packet_m
 template<server_type T>
 bool basic_web_server<T>::close_ws_connection_req(int ws_client_idx, bool client_already_closed){
   auto &client_data = websocket_clients[ws_client_idx];
+
+  for(auto &set : broadcast_ws_clients_tcp_client_idxs) // erase the client from any subscriptions
+    set.erase(client_data.client_idx);
+
   client_data.currently_writing++;
   active_websocket_connections_client_idxs.erase(client_data.client_idx); // considered closed to outside observers now
   client_data.websocket_frames = {};

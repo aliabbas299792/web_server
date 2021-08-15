@@ -8,8 +8,7 @@
 
 #include <sys/syscall.h> //syscall stuff parameters (as in like __NR_io_uring_enter/__NR_io_uring_setup)
 #include <sys/mman.h> //for mmap
-#include <sys/eventfd.h> // for eventfd
-#include <sys/timerfd.h> // for timerfd
+#include <sys/eventfd.h> // for eventfd=
 
 #include <liburing.h> //for liburing
 
@@ -61,7 +60,7 @@ namespace tcp_tls_server {
     // fields used for any request
     event_type event;
     int client_idx = -1;
-    int ID = -1;
+    int ID = 0;
 
     // fields used for write requests
     size_t written{}; //how much written so far
@@ -71,6 +70,7 @@ namespace tcp_tls_server {
     // fields used for read requests
     std::vector<char> read_data{};
     size_t read_amount{}; //how much has been read (in case of multi read requests)
+    bool auto_retry = false; // whether or not to use custom_read_req_continued
     
     // extra
     int64_t custom_info{}; //any custom info you want to attach to the request
@@ -124,7 +124,7 @@ namespace tcp_tls_server {
   };
 
   struct client_base {
-    int id = -1;
+    int id = 0; // id is only used to ensure the connection is unique
     int sockfd = -1;
     std::queue<write_data> send_data{};
 
@@ -162,20 +162,17 @@ namespace tcp_tls_server {
       std::set<int> freed_indexes{}; //using a set to store free indexes instead
       std::vector<client<T>> clients{};
 
-      int timerfd = timerfd_create(CLOCK_MONOTONIC, 0); // used for pinging connections
-
       void add_tcp_accept_req();
 
       //need it protected rather than private, since need to access from children
       int add_write_req(int client_idx, event_type event, const char *buffer, unsigned int length); //this is for the case you want to write a buffer rather than a vector
       //used internally for sending messages
       int add_read_req(int client_idx, event_type event); //adds a read request to the io_uring ring
-      //arms the timerfd
-      void add_timerfd_read_req();
 
       void custom_read_req_continued(request *req, size_t last_read); //to finish off partial reads
       
       int setup_client(int client_idx);
+      void clean_up_client_resources(int client_idx, bool trigger_callback = true); // used for cleaning up client resources
 
       void event_read(int event_fd, event_type event); //will set a read request for the eventfd
 
@@ -203,12 +200,14 @@ namespace tcp_tls_server {
       void read_connection(int client_idx);
 
       //to read for a custom fd and be notified via the CUSTOM_READ event
-      void custom_read_req(int fd, size_t to_read, int client_idx = -1, std::vector<char> &&buff = {}, size_t read_amount = 0);
+      void custom_read_req(int fd, size_t to_read, bool auto_retry = false, int client_idx = -1, std::vector<char> &&buff = {}, size_t read_amount = 0); // auto_retry is for calling custom_read_req_continued
 
       void notify_event();
       void kill_server(); // will kill the server
 
       bool is_active = true; // is the server active (only false once it received an exit signal)
+
+      std::string get_ip_address(int client_idx);
   };
 
   template<>
@@ -250,7 +249,7 @@ namespace tcp_tls_server {
       }
 
       template<typename U>
-      void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length, uint64_t custom_info = 0){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
+      void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length, uint64_t custom_info = -1){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
         if(num_clients > 0){
           for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
             auto &client = clients[(int)*client_idx_ptr];
@@ -265,7 +264,9 @@ namespace tcp_tls_server {
 
       void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
       void write_connection(int client_idx, char *buff, size_t length); //writing but using a char pointer, doesn't do anything to the data
-      void close_connection(int client_idx); //closing depends on what resources need to be freed
+
+      void start_closing_connection(int client_idx); //closing depends on what resources need to be freed
+      void finish_closing_connection(int client_idx); //closing depends on what resources need to be freed
   };
 
   template<>
@@ -317,7 +318,7 @@ namespace tcp_tls_server {
       }
 
       template<typename U>
-      void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length, uint64_t custom_info = 0){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
+      void broadcast_message(U begin, U end, int num_clients, const char *buff, size_t length, uint64_t custom_info = -1){ //if the buff pointer is ever invalidated, it will just fail to write - so sort of unsafe on its own
         if(num_clients > 0){
           for(auto client_idx_ptr = begin; client_idx_ptr != end; client_idx_ptr++){
             auto &client = clients[(int)*client_idx_ptr];
@@ -332,7 +333,9 @@ namespace tcp_tls_server {
 
       void write_connection(int client_idx, std::vector<char> &&buff); //writing depends on TLS or SSL, unlike read
       void write_connection(int client_idx, char *buff, size_t length); //writing but using a char pointer, doesn't do anything to the data
-      void close_connection(int client_idx); //closing depends on what resources need to be freed
+      
+      void start_closing_connection(int client_idx); //closing depends on what resources need to be freed
+      void finish_closing_connection(int client_idx); //closing depends on what resources need to be freed
   };
 
   #include "../tcp_server/server_base.tcc" //template implementation file

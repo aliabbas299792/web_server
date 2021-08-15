@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include <iostream>
+#include <queue>
 
 // If using this across multiple threads, only call free_item/allocate_item on one thread,
 // and only those, after you're sure that (when deleting) the ptr you're using is definitely
@@ -21,7 +22,7 @@ namespace data_store_namespace {
       if(--item.second == 0){
         free(data_vec[idx].first);
         data_vec[idx] = { nullptr, -1 };
-        free_idxs.insert(idx);
+        free_idxs.insert(free_idxs.end(), idx);
       }
     }
 
@@ -61,7 +62,7 @@ namespace data_store_namespace {
 
   class data_store {
     std::vector<std::pair<std::vector<char>, int>> data_vec{};
-    std::unordered_set<int> free_idxs{};
+    std::queue<int> free_idxs{};
 
     struct buff {
       void *ptr{};
@@ -80,15 +81,23 @@ namespace data_store_namespace {
       auto &item = data_vec[idx];
       if(--item.second == 0){
         data_vec[idx] = { {}, -1 };
-        free_idxs.insert(idx);
+        free_idxs.push(idx);
       }
+    }
+
+    size_t const size() { return data_vec.size() - free_idxs.size(); }
+    size_t const full_size() {
+      size_t all_size{};
+      for(std::pair<std::vector<char>, int> &item : data_vec)
+        all_size += item.first.size();
+      return all_size;
     }
 
     buff_idx_pair make_item(size_t size, int uses){ // used to allocate and insert an item
       int idx = 0;
       if(free_idxs.size() > 0){
-        idx = *free_idxs.cbegin();
-        free_idxs.erase(idx);
+        idx = free_idxs.front();
+        free_idxs.pop();
       }else{
         data_vec.emplace_back();
         idx = data_vec.size() - 1;
@@ -101,8 +110,8 @@ namespace data_store_namespace {
     buff_idx_pair insert_item(std::vector<char> &&buff, int uses){ // inserts and from then on assume the buff belongs to this data store
       int idx = 0;
       if(free_idxs.size() > 0){
-        idx = *free_idxs.cbegin();
-        free_idxs.erase(idx);
+        idx = free_idxs.front();
+        free_idxs.pop();
       }else{
         data_vec.emplace_back();
         idx = data_vec.size() - 1;

@@ -1,7 +1,9 @@
 #pragma once
 #include "../header/server.h"
 
+#include <chrono>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 
 using namespace tcp_tls_server;
 
@@ -30,7 +32,7 @@ void server_base<T>::start(){ //function to run the server
         req->event != event_type::KILL &&
         req->event != event_type::NOTIFICATION &&
         req->event != event_type::CUSTOM_READ &&
-        req->event != event_type::TIMERFD &&
+        req->event != event_type::READ_FINAL &&
         (cqe->res <= 0 || (req->client_idx > 0 && clients[req->client_idx].id != req->ID)))
       {
         if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
@@ -40,21 +42,7 @@ void server_base<T>::start(){ //function to run the server
           if(req->event == event_type::WRITE || req->event == event_type::ACCEPT_WRITE)
             client.num_write_reqs--; // a write operation failed, decrement the number of active write operaitons for this client
 
-          if(client.num_write_reqs == 0){
-            while(client.send_data.size()){
-              auto &send_data = client.send_data.front();
-              
-              int broadcast_additional_info = send_data.broadcast ? send_data.custom_info : -1;
-              if(close_cb != nullptr) close_cb(req->client_idx, broadcast_additional_info, static_cast<server<T>*>(this), custom_obj); // might have had multiple broadcasts
-
-              client.send_data.pop();
-            }
-
-            if(client.send_data.size() == 0) // there was no send_data and no broadcast, so we close it once here
-              if(close_cb != nullptr) close_cb(req->client_idx, -1, static_cast<server<T>*>(this), custom_obj);
-            
-            static_cast<server<T>*>(this)->close_connection(req->client_idx); //making sure to remove any data relating to it as well
-          }
+          static_cast<server<T>*>(this)->start_closing_connection(req->client_idx); //making sure to remove any data relating to it as well
         }
       }else if(req->event == event_type::KILL) {
         io_uring_queue_exit(&ring);
@@ -66,39 +54,32 @@ void server_base<T>::start(){ //function to run the server
         break;
       }else if(req->event == event_type::NOTIFICATION){
         event_read(notification_efd, event_type::NOTIFICATION);
-        if(event_cb != nullptr) event_cb(static_cast<server<T>*>(this), custom_obj);
+
+        auto efd_data = *reinterpret_cast<uint64_t*>(&(req->read_data[0]));
+        while(efd_data--) // repeat this for the number of times the eventfd has gone off
+          if(event_cb != nullptr) event_cb(static_cast<server<T>*>(this), custom_obj);
       }else if(req->event == event_type::CUSTOM_READ){
-        if(req->read_data.size() == cqe->res + req->read_amount){
-          if(custom_read_cb != nullptr) custom_read_cb(req->client_idx, (int)req->custom_info, std::move(req->read_data), static_cast<server<T>*>(this), custom_obj);
+        if(req->read_data.size() == cqe->res + req->read_amount || !req->auto_retry){ // if we said we don't want to use custom_read_req_continued, then we just process the data now
+          if(custom_read_cb != nullptr) custom_read_cb(req->client_idx, (int)req->custom_info, std::move(req->read_data), cqe->res, static_cast<server<T>*>(this), custom_obj);
         }else{
           custom_read_req_continued(req, cqe->res);
           req = nullptr; //don't want it to be deleted yet
         }
-      }else if(req->event == event_type::TIMERFD){
-        auto active_connections_copy = active_connections; // since we possibly remove elements during the loop, we need a copy
-        for(auto client_idx : active_connections_copy){
-          uint64_t buff{};
-          if(recv(clients[client_idx].sockfd, &buff, sizeof(uint64_t), MSG_PEEK | MSG_DONTWAIT) == 0){
-            auto &client = clients[client_idx];
-
-            while(client.send_data.size() > 0){ // might have had multiple broadcasts, so remove all the elements
-              auto &send_data = client.send_data.front();
-              
-              int broadcast_additional_info = send_data.broadcast ? send_data.custom_info : -1;
-              if(close_cb != nullptr) close_cb(client_idx, broadcast_additional_info, static_cast<server<T>*>(this), custom_obj);
-
-              client.send_data.pop();
-            }
-
-            if(client.send_data.size() == 0) // there was no send_data and no broadcast, so we close it once here
-              if(close_cb != nullptr) close_cb(client_idx, -1, static_cast<server<T>*>(this), custom_obj);
-            
-            static_cast<server<T>*>(this)->close_connection(client_idx); //making sure to remove any data relating to it as well
-          }
-        }
-        
-        add_timerfd_read_req();
       }else{
+        std::cout << "active_connections (client idx): ";
+        for(const auto conn : active_connections)
+          std::cout << "(" << conn << ") ";
+        
+        std::cout << std::endl << "clients (client idx, id, sockfd): ";
+        for(int i = 0; i < clients.size(); i++)
+          std::cout << "(" << i << ", " << clients[i].id << ", " << clients[i].sockfd << ") ";
+        
+        std::cout << std::endl << "freed idxs (client idx): ";
+        for(const auto idx : freed_indexes)
+          std::cout << "(" << idx << ") ";
+        
+        std::cout << std::endl << std::endl;
+
         static_cast<server<T>*>(this)->req_event_handler(req, cqe->res);
       }
 
@@ -106,6 +87,24 @@ void server_base<T>::start(){ //function to run the server
       io_uring_cqe_seen(&ring, cqe); //mark this CQE as seen
     }
   }
+}
+
+template<server_type T>
+void server_base<T>::clean_up_client_resources(int client_idx, bool trigger_callback){ // this should be called any place close_cb would be called normally (i.e basically only in one of the close_connection functions)
+  auto &client = clients[client_idx];
+
+  while(client.send_data.size()){ // if they had anything left to write, dispose of it
+    auto &send_data = client.send_data.front();
+    
+    int broadcast_additional_info = send_data.broadcast ? send_data.custom_info : -1;
+    if(close_cb != nullptr && trigger_callback) close_cb(client_idx, broadcast_additional_info, static_cast<server<T>*>(this), custom_obj); // might have had multiple broadcasts
+
+    std::cout << std::string(send_data.get_ptr_and_size().buff, send_data.get_ptr_and_size().length) << " was deleted msg\n";
+    client.send_data.pop();
+  }
+
+  if(client.send_data.size() == 0) // there was no send_data and no broadcast, so we close it once here
+    if(close_cb != nullptr && trigger_callback) close_cb(client_idx, -1, static_cast<server<T>*>(this), custom_obj);
 }
 
 template<server_type T>
@@ -152,16 +151,6 @@ server_base<T>::server_base(int listen_port){
   event_read(notification_efd, event_type::NOTIFICATION); //sets a read request for the normal eventfd
   
   listener_fd = setup_listener(listen_port); //setup the listener socket
-  
-  // 5s timer
-  itimerspec timer_values;
-  timer_values.it_value.tv_sec = 5;
-  timer_values.it_value.tv_nsec = 0;
-  timer_values.it_interval.tv_sec = 5;
-  timer_values.it_interval.tv_nsec = 0;
-  timerfd_settime(timerfd, 0, &timer_values, nullptr);
-  
-  add_timerfd_read_req(); // timerfd read
 }
 
 template<server_type T>
@@ -174,7 +163,7 @@ int server_base<T>::setup_client(int client_socket){ //returns index into client
 
     auto &freed_client = clients[index];
 
-    const auto new_id = (freed_client.id + 1) % 100; //ID loops every 100
+    const auto new_id = (freed_client.id + 1) % 1000000; //ID loops every 1000000
     freed_client = client<T>();
     freed_client.id = new_id;
   }else{
@@ -215,6 +204,21 @@ int server_base<T>::setup_listener(int port) {
       
     if(setsockopt(listener_fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) == -1)
       utility::fatal_error("setsockopt SO_REUSEPORT");
+      
+    if(setsockopt(listener_fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes)) == -1)
+      utility::fatal_error("setsockopt SO_KEEPALIVE");
+    
+    int keep_idle = 1000; // The time (in seconds) the connection needs to remain idle before TCP starts sending keepalive probes, if the socket option SO_KEEPALIVE has been set on this socket.  This option should not be used in code intended to be portable.
+    if(setsockopt(listener_fd, IPPROTO_TCP, TCP_KEEPIDLE, &keep_idle, sizeof(keep_idle)) == -1)
+      utility::fatal_error("setsockopt TCP_KEEPIDLE");
+    
+    int keep_interval = 1000; // The time (in seconds) between individual keepalive probes. This option should not be used in code intended to be portable.
+    if(setsockopt(listener_fd, IPPROTO_TCP, TCP_KEEPINTVL, &keep_interval, sizeof(keep_interval)) == -1)
+      utility::fatal_error("setsockopt TCP_KEEPINTVL");
+    
+    int keep_count = 10; // The maximum number of keepalive probes TCP should send before dropping the connection.  This option should not be used in code intended to be portable.
+    if(setsockopt(listener_fd, IPPROTO_TCP, TCP_KEEPCNT, &keep_count, sizeof(keep_count)) == -1)
+      utility::fatal_error("setsockopt TCP_KEEPCNT");
 
     if(bind(listener_fd, traverser->ai_addr, traverser->ai_addrlen) == -1){ //try to bind the socket using the address data supplied, has internet address, address family and port in the data
       perror("bind");
@@ -233,6 +237,16 @@ int server_base<T>::setup_listener(int port) {
     utility::fatal_error("listen");
 
   return listener_fd;
+}
+
+template<server_type T>
+std::string server_base<T>::get_ip_address(int client_idx){
+  int fd = clients[client_idx].sockfd;
+
+  sockaddr_in addr{};
+  socklen_t len = sizeof(addr);
+  getpeername(fd, (struct sockaddr *)&addr, &len);
+  return inet_ntoa(addr.sin_addr);
 }
 
 template<server_type T>
@@ -273,19 +287,6 @@ int server_base<T>::add_read_req(int client_idx, event_type event){
 }
 
 template<server_type T>
-void server_base<T>::add_timerfd_read_req(){
-  io_uring_sqe *sqe = io_uring_get_sqe(&ring); //get a valid SQE (correct index and all)
-  request *req = new request(); //enough space for the request struct
-  req->total_length = sizeof(uint64_t);
-  req->event = event_type::TIMERFD;
-  req->read_data.resize(sizeof(uint64_t));
-
-  io_uring_prep_read(sqe, timerfd, &(req->read_data[0]), sizeof(uint64_t), 0); //don't read at an offset
-  io_uring_sqe_set_data(sqe, req);
-  io_uring_submit(&ring); //submits the event
-}
-
-template<server_type T>
 int server_base<T>::add_write_req(int client_idx, event_type event, const char *buffer, unsigned int length) {
   request *req = new request();
   req->client_idx = client_idx;
@@ -305,13 +306,14 @@ int server_base<T>::add_write_req(int client_idx, event_type event, const char *
 }
 
 template<server_type T>
-void server_base<T>::custom_read_req(int fd, size_t to_read, int client_idx, std::vector<char> &&buff, size_t read_amount){
+void server_base<T>::custom_read_req(int fd, size_t to_read, bool auto_retry, int client_idx, std::vector<char> &&buff, size_t read_amount){
   request *req = new request();
   req->client_idx = client_idx;
   req->total_length = to_read;
   req->read_amount = read_amount;
   req->read_data = buff;
   req->custom_info = fd;
+  req->auto_retry = auto_retry;
   req->event = event_type::CUSTOM_READ;
 
   req->read_data.resize(to_read + read_amount); //needs this much at least

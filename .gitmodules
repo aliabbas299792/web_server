@@ -1,3 +1,6 @@
 [submodule "src/vendor/readerwriterqueue"]
 	path = src/vendor/readerwriterqueue
 	url = https://github.com/cameron314/readerwriterqueue
+[submodule "src/vendor/json"]
+	path = src/vendor/json
+	url = https://github.com/nlohmann/json.git

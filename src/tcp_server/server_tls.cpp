@@ -1,6 +1,7 @@
 #include "../header/server.h"
 #include "../header/utility.h"
 
+#include <sys/socket.h>
 #include <thread>
 
 using namespace tcp_tls_server;
@@ -15,21 +16,36 @@ void server<server_type::TLS>::kill_all_servers() {
     server->kill_server();
 }
 
-void server<server_type::TLS>::close_connection(int client_idx) {
+void server<server_type::TLS>::start_closing_connection(int client_idx) {
   auto &client = clients[client_idx];
+  
   if(client.num_write_reqs == 0 && (active_connections.count(client_idx) || uninitiated_connections.count(client_idx))){
+    clean_up_client_resources(client_idx, active_connections.count(client_idx)); // only trigger the close callback if it is actually active
+    
     wolfSSL_shutdown(client.ssl);
     wolfSSL_free(client.ssl);
 
-    shutdown(client.sockfd, SHUT_RDWR);
-    close(client.sockfd);
-
     client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
-    active_connections.erase(client_idx);
     client.send_data = {}; //free up all the data we might have wanted to send
 
-    freed_indexes.insert(client_idx);
+    shutdown(client.sockfd, SHUT_WR);
+
+    add_read_req(client_idx, event_type::READ_FINAL);
+  }
+}
+
+void server<server_type::TLS>::finish_closing_connection(int client_idx) {
+  auto &client = clients[client_idx];
+  
+  if(client.num_write_reqs == 0 && (active_connections.count(client_idx) || uninitiated_connections.count(client_idx))){
+    int shutdwn = shutdown(client.sockfd, SHUT_RD);
+    int clse = close(client.sockfd);
+
     uninitiated_connections.erase(client_idx);
+    active_connections.erase(client_idx);
+    freed_indexes.insert(freed_indexes.end(), client_idx);
+
+    std::cout << "\t\tfinished shutting down connection (shutdown ## close): (" << shutdwn << " ## " << clse << ")\n";
   }
 }
 
@@ -162,6 +178,11 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
       client.accept_last_written = cqe_res; //this is the amount that was last written, used in the tls_write callback
       if(wolfSSL_accept(client.ssl) == 1) //that means the connection was successfully established
         tls_accepted_routine(req->client_idx);
+      break;
+    }
+    case event_type::READ_FINAL: {
+      clients[req->client_idx].read_req_active = false;
+      finish_closing_connection(req->client_idx);
       break;
     }
     case event_type::WRITE: { //used for generally writing over TLS
