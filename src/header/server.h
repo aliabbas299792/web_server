@@ -127,6 +127,7 @@ namespace tcp_tls_server {
     int id = 0; // id is only used to ensure the connection is unique
     int sockfd = -1;
     std::queue<write_data> send_data{};
+    bool closing_now = false; // marked as true when closing is initiated
 
     bool read_req_active = false;
     int num_write_reqs = 0; // if this is non zero, then do not proceed with the close callback, wait for other requests to finish
@@ -267,6 +268,7 @@ namespace tcp_tls_server {
 
       void start_closing_connection(int client_idx); //closing depends on what resources need to be freed
       void finish_closing_connection(int client_idx); //closing depends on what resources need to be freed
+      void force_close_connection(int client_idx); // should be used only when it absolutely needs to be closed now
   };
 
   template<>
@@ -336,6 +338,7 @@ namespace tcp_tls_server {
       
       void start_closing_connection(int client_idx); //closing depends on what resources need to be freed
       void finish_closing_connection(int client_idx); //closing depends on what resources need to be freed
+      void force_close_connection(int client_idx); // should be used only when it absolutely needs to be closed now
   };
 
   #include "../tcp_server/server_base.tcc" //template implementation file

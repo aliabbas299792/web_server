@@ -32,7 +32,6 @@ void server_base<T>::start(){ //function to run the server
         req->event != event_type::KILL &&
         req->event != event_type::NOTIFICATION &&
         req->event != event_type::CUSTOM_READ &&
-        req->event != event_type::READ_FINAL &&
         (cqe->res <= 0 || (req->client_idx > 0 && clients[req->client_idx].id != req->ID)))
       {
         if(req->event == event_type::ACCEPT_WRITE || req->event == event_type::WRITE)
@@ -42,7 +41,7 @@ void server_base<T>::start(){ //function to run the server
           if(req->event == event_type::WRITE || req->event == event_type::ACCEPT_WRITE)
             client.num_write_reqs--; // a write operation failed, decrement the number of active write operaitons for this client
 
-          static_cast<server<T>*>(this)->start_closing_connection(req->client_idx); //making sure to remove any data relating to it as well
+          static_cast<server<T>*>(this)->force_close_connection(req->client_idx); //making sure to remove any data relating to it as well
         }
       }else if(req->event == event_type::KILL) {
         io_uring_queue_exit(&ring);

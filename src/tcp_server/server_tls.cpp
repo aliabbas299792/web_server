@@ -21,16 +21,12 @@ void server<server_type::TLS>::start_closing_connection(int client_idx) {
   
   if(client.num_write_reqs == 0 && (active_connections.count(client_idx) || uninitiated_connections.count(client_idx))){
     clean_up_client_resources(client_idx, active_connections.count(client_idx)); // only trigger the close callback if it is actually active
-    
-    wolfSSL_shutdown(client.ssl);
-    wolfSSL_free(client.ssl);
-
-    client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
     client.send_data = {}; //free up all the data we might have wanted to send
 
     shutdown(client.sockfd, SHUT_WR);
 
-    add_read_req(client_idx, event_type::READ_FINAL);
+    client.closing_now = true;
+    add_read_req(client_idx, event_type::READ);
   }
 }
 
@@ -38,6 +34,11 @@ void server<server_type::TLS>::finish_closing_connection(int client_idx) {
   auto &client = clients[client_idx];
   
   if(client.num_write_reqs == 0 && (active_connections.count(client_idx) || uninitiated_connections.count(client_idx))){
+    wolfSSL_shutdown(client.ssl);
+    wolfSSL_free(client.ssl);
+
+    client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
+
     int shutdwn = shutdown(client.sockfd, SHUT_RD);
     int clse = close(client.sockfd);
 
@@ -46,6 +47,33 @@ void server<server_type::TLS>::finish_closing_connection(int client_idx) {
     freed_indexes.insert(freed_indexes.end(), client_idx);
 
     std::cout << "\t\tfinished shutting down connection (shutdown ## close): (" << shutdwn << " ## " << clse << ")\n";
+  }
+}
+
+void server<server_type::TLS>::force_close_connection(int client_idx) {
+  auto &client = clients[client_idx];
+
+  std::cout << "\t\t\t\tforce close";
+
+  if(active_connections.count(client_idx) || uninitiated_connections.count(client_idx)){
+    clean_up_client_resources(client_idx);
+
+    client.send_data = {}; //free up all the data we might have wanted to send
+
+    wolfSSL_shutdown(client.ssl);
+    wolfSSL_free(client.ssl);
+
+    client.ssl = nullptr; //so that if we try to close multiple times, free() won't crash on it, inside of wolfSSL_free()
+
+    int shutdwn = shutdown(client.sockfd, SHUT_RDWR);
+    int clse = close(client.sockfd);
+
+    uninitiated_connections.erase(client_idx);
+    active_connections.erase(client_idx);
+    freed_indexes.insert(freed_indexes.end(), client_idx);
+
+    std::cout << "\t\tFORCED shut down connection (shutdown ## close): (" << shutdwn << " ## " << clse << ")\n";
+    std::cout << "\t\t\terrno: " << errno << "\n";
   }
 }
 
@@ -180,11 +208,6 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
         tls_accepted_routine(req->client_idx);
       break;
     }
-    case event_type::READ_FINAL: {
-      clients[req->client_idx].read_req_active = false;
-      finish_closing_connection(req->client_idx);
-      break;
-    }
     case event_type::WRITE: { //used for generally writing over TLS
       int broadcast_additional_info = -1; // only used for broadcast messages
       auto &client = clients[req->client_idx];
@@ -213,6 +236,11 @@ void server<server_type::TLS>::req_event_handler(request *&req, int cqe_res){
     case event_type::READ: { //used for reading over TLS
       auto &client = clients[req->client_idx];
       client.read_req_active = false;
+
+      if(client.closing_now && cqe_res == 0){ // close if it read 0
+        finish_closing_connection(req->client_idx);
+        break;
+      }
 
       int to_read_amount = cqe_res; //the default read size
       if(client.recv_data.size()) { //will correctly deal with needing to call wolfSSL_read multiple times

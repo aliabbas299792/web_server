@@ -96,9 +96,6 @@ void basic_web_server<T>::websocket_process_read_cb(int client_idx, char *buffer
         break;
     }
   }
-
-  if(!closed)
-    tcp_server->read_connection(client_idx); //since it's a websocket, add another read request right after
 }
 
 template<server_type T>
